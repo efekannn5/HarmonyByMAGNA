@@ -1,0 +1,20 @@
+[Unit]
+Description=HarmonyView Manager Frontend (Vite Dev Server)
+After=network.target
+
+[Service]
+Type=simple
+User=sua_it_ai
+Group=sua_it_ai
+WorkingDirectory=/home/sua_it_ai/controltower/harmonyview/frontend-manager
+Environment="HOME=/home/sua_it_ai"
+Environment="PATH=/home/sua_it_ai/.npm-global/bin:/home/sua_it_ai/.local/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="NODE_ENV=development"
+ExecStart=/usr/bin/npm run dev -- --host 0.0.0.0
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

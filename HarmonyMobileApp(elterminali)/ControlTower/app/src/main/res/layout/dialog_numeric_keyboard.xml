@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="10dp"
+    android:background="#FFFFFF">
+
+    <!-- Dolly numarası gösterge ekranı -->
+    <TextView
+        android:id="@+id/tvDollyDisplay"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:minHeight="56dp"
+        android:background="#F5F5F5"
+        android:gravity="center"
+        android:text="0"
+        android:textColor="#000000"
+        android:textSize="28sp"
+        android:fontFamily="monospace"
+        android:layout_marginBottom="10dp"
+        android:padding="10dp"/>
+
+    <!-- Sayısal klavye -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="4"
+        android:orientation="vertical">
+
+        <!-- Satır 1: 1, 2, 3 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn1"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="3dp"
+                android:text="1"
+                android:textSize="22sp"
+                android:textColor="#FFFFFF"
+                android:background="#2196F3"/>
+
+            <Button
+                android:id="@+id/btn2"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="3dp"
+                android:text="2"
+                android:textSize="22sp"
+                android:textColor="#FFFFFF"
+                android:background="#2196F3"/>
+
+            <Button
+                android:id="@+id/btn3"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="3dp"
+                android:text="3"
+                android:textSize="22sp"
+                android:textColor="#FFFFFF"
+                android:background="#2196F3"/>
+        </LinearLayout>
+
+        <!-- Satır 2: 4, 5, 6 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn4"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="3dp"
+                android:text="4"
+                android:textSize="22sp"
+                android:textColor="#FFFFFF"
+                android:background="#2196F3"/>
+
+            <Button
+                android:id="@+id/btn5"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="3dp"
+                android:text="5"
+                android:textSize="22sp"
+                android:textColor="#FFFFFF"
+                android:background="#2196F3"/>
+
+            <Button
+                android:id="@+id/btn6"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="3dp"
+                android:text="6"
+                android:textSize="22sp"
+                android:textColor="#FFFFFF"
+                android:background="#2196F3"/>
+        </LinearLayout>
+
+        <!-- Satır 3: 7, 8, 9 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn7"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="3dp"
+                android:text="7"
+                android:textSize="22sp"
+                android:textColor="#FFFFFF"
+                android:background="#2196F3"/>
+
+            <Button
+                android:id="@+id/btn8"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="3dp"
+                android:text="8"
+                android:textSize="22sp"
+                android:textColor="#FFFFFF"
+                android:background="#2196F3"/>
+
+            <Button
+                android:id="@+id/btn9"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="3dp"
+                android:text="9"
+                android:textSize="22sp"
+                android:textColor="#FFFFFF"
+                android:background="#2196F3"/>
+        </LinearLayout>
+
+        <!-- Satır 4: Sil, 0, Temizle -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnBackspace"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="3dp"
+                android:text="⌫"
+                android:textSize="22sp"
+                android:textColor="#FFFFFF"
+                android:background="#FF9800"/>
+
+            <Button
+                android:id="@+id/btn0"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="3dp"
+                android:text="0"
+                android:textSize="22sp"
+                android:textColor="#FFFFFF"
+                android:background="#2196F3"/>
+
+            <Button
+                android:id="@+id/btnClear"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="3dp"
+                android:text="C"
+                android:textSize="22sp"
+                android:textColor="#FFFFFF"
+                android:background="#F44336"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:background="#000000"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="20dp">
+
+    <ImageView
+        android:id="@+id/imgLogo"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:tint="#FFFFFF"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@mipmap/ic_launcher_background"
+        tools:srcCompat="@mipmap/ic_launcher_background" />
+
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="MAGNA\nHarmony"
+        android:textColor="#FFFFFF"
+        android:textSize="20sp"
+        app:layout_constraintTop_toTopOf="@id/imgLogo"
+        app:layout_constraintBottom_toBottomOf="@id/imgLogo"
+        app:layout_constraintStart_toEndOf="@id/imgLogo"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:paddingStart="12dp"/>
+
+    <TextView
+        android:id="@+id/tvLoginHint"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Barkodu okutun…"
+        android:textColor="#BDBDBD"
+        android:textSize="14sp"
+        app:layout_constraintTop_toBottomOf="@id/imgLogo"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="12dp"/>
+
+    <!-- uyarı alanı -->
+    <TextView
+        android:id="@+id/tvWarnAuth"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="#FFD54F"
+        android:textSize="14sp"
+        app:layout_constraintTop_toBottomOf="@id/tvLoginHint"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="8dp"/>
+
+    <!-- gizli giriş -->
+    <EditText
+        android:id="@+id/etHidden"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:alpha="0"
+        android:singleLine="true"
+        android:maxLines="1"
+        android:cursorVisible="false"
+        android:inputType="textNoSuggestions|textVisiblePassword"
+        android:importantForAutofill="no"
+        android:background="@android:color/transparent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <!-- ==================== TEMP_DEBUG: BYPASS BUTTON - SİL BUNU! ==================== -->
+    <!-- Production'a çıkmadan bu butonu SİL! -->
+
+<!--
+    <Button
+        android:id="@+id/btnBypass"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🔓 DEBUG BYPASS"
+        android:textColor="#FF0000"
+        android:textStyle="bold"
+        android:backgroundTint="#FFFF00"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="20dp"
+        android:layout_marginEnd="20dp"/>
+-->
+
+</androidx.constraintlayout.widget.ConstraintLayout>

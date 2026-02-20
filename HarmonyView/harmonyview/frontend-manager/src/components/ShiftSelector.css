@@ -1,0 +1,33 @@
+.shift-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shift-selector label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.shift-select {
+  padding: 10px 15px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 220px;
+}
+
+.shift-select:hover {
+  border-color: #c8102e;
+}
+
+.shift-select:focus {
+  outline: none;
+  border-color: #c8102e;
+  box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.1);
+}

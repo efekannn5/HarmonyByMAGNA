@@ -1,0 +1,17 @@
+[Unit]
+Description=HarmonyView Operator Backend API
+After=network.target
+
+[Service]
+Type=simple
+User=sua_it_ai
+WorkingDirectory=/home/sua_it_ai/controltower/harmonyview/backend
+Environment="PATH=/home/sua_it_ai/.local/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/usr/bin/python3 app.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

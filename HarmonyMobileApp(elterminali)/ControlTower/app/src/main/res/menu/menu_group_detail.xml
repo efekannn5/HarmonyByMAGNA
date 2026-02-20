@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    
+    <item
+        android:id="@+id/action_manual_add"
+        android:title="Manuel Dolly Ekle"
+        android:icon="@android:drawable/ic_input_add"
+        app:showAsAction="never"/>
+    
+    <item
+        android:id="@+id/action_submit"
+        android:title="Gönder"
+        android:icon="@android:drawable/ic_menu_upload"
+        app:showAsAction="never"/>
+    
+    <item
+        android:id="@+id/action_remove_last"
+        android:title="Son Kasayı Çıkart"
+        android:icon="@android:drawable/ic_menu_revert"
+        app:showAsAction="never"/>
+    
+</menu>

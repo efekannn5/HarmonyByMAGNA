@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ct_black">#000000</color>
+    <color name="ct_white">#FFFFFF</color>
+    <color name="ct_grey">#BDBDBD</color>
+    <color name="ct_primary">#1E88E5</color>          <!-- buton aktif -->
+    <color name="ct_primary_disabled">#3A3A3A</color> <!-- buton pasif -->
+    <color name="ct_status_wait_bg">#FFDFAF00</color> <!-- kehribar/sarımsı (bekleme) -->
+    <color name="ct_status_ok_bg">#FF2E7D32</color>   <!-- yeşil (onay) -->
+    <color name="ct_status_err_bg">#FFB00020</color>
+    <color name="row_pending">#161A21</color>
+    <color name="row_scanned">#1F7A3D</color>
+    <color name="row_skipped">#B07F00</color>
+</resources>

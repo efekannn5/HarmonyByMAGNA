@@ -1,0 +1,116 @@
+.eol-performance-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+thead {
+  background: #f8f9fa;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+th {
+  padding: 15px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #dee2e6;
+  font-size: 0.95rem;
+}
+
+td {
+  padding: 15px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.95rem;
+}
+
+tbody tr {
+  transition: all 0.2s ease;
+}
+
+tbody tr:hover {
+  background: #f8f9fa;
+  transform: scale(1.01);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.eol-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.fill-percentage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fill-bar {
+  flex: 1;
+  height: 20px;
+  background: #f0f0f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.fill-progress {
+  height: 100%;
+  background: linear-gradient(90deg, #c8102e, #ff4d4d);
+  border-radius: 10px;
+  transition: width 0.5s ease;
+}
+
+.performance-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.performance-badge.excellent {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.performance-badge.good {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.performance-badge.average {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.performance-badge.poor {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.performance-excellent {
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.performance-good {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.performance-average {
+  background: rgba(251, 191, 36, 0.05);
+}
+
+.performance-poor {
+  background: rgba(239, 68, 68, 0.05);
+}

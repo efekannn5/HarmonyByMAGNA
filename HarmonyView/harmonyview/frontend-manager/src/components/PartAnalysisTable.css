@@ -1,0 +1,145 @@
+.part-analysis-section {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.part-analysis-section h3 {
+  margin: 0 0 8px 0;
+  color: #1a1a2e;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.section-sub {
+  color: #666;
+  font-size: 0.875rem;
+  margin: 0 0 20px 0;
+}
+
+.part-table-container {
+  overflow-x: auto;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.part-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.part-table th {
+  background: linear-gradient(135deg, #c8102e 0%, #e31837 100%);
+  color: #fff;
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.part-table th:first-child {
+  border-radius: 8px 0 0 0;
+}
+
+.part-table th:last-child {
+  border-radius: 0 8px 0 0;
+}
+
+.part-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+  color: #333;
+}
+
+.part-table tbody tr:hover {
+  background: #f8f9ff;
+}
+
+.part-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.part-table tbody tr:nth-child(even):hover {
+  background: #f0f2ff;
+}
+
+.part-number {
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.group-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #e8f4fd;
+  color: #0077b6;
+}
+
+.group-badge.no-group {
+  background: #f5f5f5;
+  color: #999;
+}
+
+.duration-cell {
+  text-align: center;
+}
+
+.duration-value {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.duration-value.good {
+  color: #059669;
+}
+
+.duration-value.warning {
+  color: #d97706;
+}
+
+.duration-value.danger {
+  color: #dc2626;
+}
+
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #f0f0f0;
+  font-weight: 600;
+  color: #333;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.summary-row {
+  background: linear-gradient(135deg, #f8f9ff 0%, #fff 100%) !important;
+  font-weight: 600;
+}
+
+.summary-row td {
+  border-top: 2px solid #c8102e;
+  color: #1a1a2e;
+}

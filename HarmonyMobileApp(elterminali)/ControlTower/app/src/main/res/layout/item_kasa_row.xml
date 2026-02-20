@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    android:foreground="?android:attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardCornerRadius="16dp"
+    app:cardUseCompatPadding="true"
+    app:cardBackgroundColor="#161A21">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- Üst satır -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/rootRow"
+            android:layout_width="match_parent"
+            android:layout_height="88dp"
+            android:paddingVertical="8dp">
+
+            <!-- Orta çizgi: soldan %56 -->
+            <androidx.constraintlayout.widget.Guideline
+                android:id="@+id/guideline56"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                app:layout_constraintGuide_percent="0.39" />
+
+            <!-- Sol blok: Order No + Dolly No -->
+            <LinearLayout
+                android:id="@+id/leftBlock"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginStart="18dp"
+                android:layout_marginEnd="10dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/guideline56"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent">
+                
+                <!-- Dolly Order No (büyük) -->
+                <TextView
+                    android:id="@+id/tvKasaNo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="SEQ-001"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold"
+                    android:textSize="18sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+                
+                <!-- Dolly No (küçük, gri) -->
+                <TextView
+                    android:id="@+id/tvDollyNo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Dolly: 1062037"
+                    android:textColor="#9CA3AF"
+                    android:textSize="11sp"
+                    android:layout_marginTop="2dp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
+
+            <!-- Dikey çizgi -->
+
+            <!-- Sağ blok: İlk VIN / Son VIN -->
+
+            <View
+                android:id="@+id/divider"
+                android:layout_width="1.3dp"
+                android:layout_height="52dp"
+                android:background="#2B3340"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="@id/guideline56"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="@id/guideline56"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <LinearLayout
+                android:id="@+id/rightBlock"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginStart="14dp"
+                android:layout_marginEnd="16dp"
+                app:layout_constraintStart_toEndOf="@id/guideline56"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent">
+
+                <TextView
+                    android:id="@+id/tvFirstVin"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="İlk VIN: 68200089"
+                    android:textColor="#DDE7F2"
+                    android:textSize="15sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"/>
+
+                <TextView
+                    android:id="@+id/tvLastVin"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Son VIN: 68201754"
+                    android:textColor="#DDE7F2"
+                    android:textSize="15sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"/>
+
+            </LinearLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- Alt kırılım: VIN listesi (expand/collapse) -->
+        <LinearLayout
+            android:id="@+id/expandArea"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:paddingBottom="12dp"
+            android:visibility="gone">
+
+            <!-- Buraya adapter kodu dinamik TextView’ler ekleyecek -->
+        </LinearLayout>
+
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

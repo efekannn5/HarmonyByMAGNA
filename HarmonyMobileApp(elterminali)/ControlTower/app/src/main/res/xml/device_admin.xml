@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <!-- Ekran kilidini kontrol et -->
+        <force-lock />
+        <!-- Cihazı fabrika ayarlarına döndür -->
+        <wipe-data />
+        <!-- Şifre politikalarını yönet -->
+        <reset-password />
+        <!-- Kamera kullanımını devre dışı bırak -->
+        <disable-camera />
+        <!-- Kilitleme süresi ayarla -->
+        <limit-password />
+    </uses-policies>
+</device-admin>

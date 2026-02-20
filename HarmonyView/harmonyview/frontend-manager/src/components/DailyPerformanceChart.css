@@ -1,0 +1,45 @@
+.daily-performance-chart {
+  width: 100%;
+}
+
+.custom-tooltip {
+  background: white;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.tooltip-date {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  color: #333;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 8px;
+}
+
+.tooltip-value {
+  font-size: 0.9rem;
+  margin: 5px 0;
+  font-weight: 600;
+}
+
+.tooltip-shifts {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.tooltip-subtitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.tooltip-shift {
+  font-size: 0.85rem;
+  color: #888;
+  margin: 3px 0;
+}

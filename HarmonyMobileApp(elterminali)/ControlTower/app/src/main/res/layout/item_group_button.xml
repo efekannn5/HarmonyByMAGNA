@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/itemRoot"
+    android:layout_width="match_parent"
+    android:layout_height="88dp"
+    android:layout_marginBottom="14dp"
+    android:foreground="?android:attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:elevation="5dp"
+    app:cardCornerRadius="18dp"
+    app:cardBackgroundColor="#161A21"
+    app:cardUseCompatPadding="true">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingVertical="6dp">
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/guideline56"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintGuide_percent="0.56" />
+
+        <TextView
+            android:id="@+id/tvGroupName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Forklift Yükleme Alanı 1 – Bekleme Noktası"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:ellipsize="end"
+            android:lines="2"
+            android:maxLines="2"
+            android:gravity="center_vertical"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="10dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/guideline56"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+        <View
+            android:id="@+id/divider"
+            android:layout_width="1.3dp"
+            android:layout_height="52dp"
+            android:background="#2B3340"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="@id/guideline56"
+            app:layout_constraintEnd_toEndOf="@id/guideline56" />
+
+        <TextView
+            android:id="@+id/statusPill"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:minWidth="130dp"
+            android:maxWidth="250dp"
+            android:gravity="center"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:text="Yükleme Bekliyor"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:textColor="#DDE7F2"
+            android:singleLine="true"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            app:autoSizeTextType="uniform"
+            app:autoSizeMinTextSize="14sp"
+            app:autoSizeMaxTextSize="17sp"
+            app:autoSizeStepGranularity="1sp"
+            app:layout_constrainedWidth="true"
+            android:background="@drawable/bg_pill_idle"
+            android:layout_marginEnd="18dp"
+            android:layout_marginStart="14dp"
+            app:layout_constraintStart_toEndOf="@id/guideline56"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.cardview.widget.CardView>

@@ -1,0 +1,43 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8181,
+    "endpoint": "/dolly-eol"
+  },
+  "database": {
+    "driver": "{ODBC Driver 17 for SQL Server}",
+    "server": "10.19.236.39",
+    "database": "ControlTower",
+    "username": "sua_appowneruser1",
+    "password": "Magna2026!!",
+    "target_table": "dbo.DollyEOLInfo",
+    "primary_key_column": "RECEIPTID",
+    "backup_table": "dbo.DollyEOLInfoBackup"
+  },
+  "mapping": {
+    "RECEIPTID": "RECEIPTID",
+    "DOLLYID": "DollyNo",
+    "DOLLYORDERNO": "DollyOrderNo",
+    "VINNO": "VinNo",
+    "EOLID": "EOLID",
+    "EOLNAME": "EOLName",
+    "FORDCUSTOMERCODE": "CustomerReferans",
+    "QUANTITY": "Adet",
+    "EOLDATE": "EOLDATE"
+    
+  },
+  "mapping2": {
+    "RECEIPTID": "RECEIPTID",
+    "DOLLYID": "DollyNo",
+    "DOLLYORDERNO": "DollyOrderNo",
+    "VINNO": "VinNo",
+    "EOLID": "EOLID",
+    "EOLNAME": "EOLName",
+    "FORDCUSTOMERCODE": "CustomerReferans",
+    "QUANTITY": "Adet",
+    "EOLDATE": "EOLDATE"
+  },
+  "logging": {
+    "base_dir": "logs"
+  }
+}

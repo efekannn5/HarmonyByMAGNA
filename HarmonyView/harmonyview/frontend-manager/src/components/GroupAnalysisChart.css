@@ -1,0 +1,121 @@
+.group-analysis-section {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.group-analysis-section h3 {
+    margin: 0 0 8px 0;
+    color: #1a1a2e;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.group-analysis-content {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 24px;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .group-analysis-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+.group-chart-container {
+    height: 300px;
+}
+
+.group-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.group-card {
+    background: linear-gradient(135deg, #f8f9ff 0%, #fff 100%);
+    border: 1px solid #e8e8e8;
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.group-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.group-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.group-name {
+    font-weight: 600;
+    color: #1a1a2e;
+    font-size: 0.95rem;
+}
+
+.group-dolly-count {
+    background: #c8102e;
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.group-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.group-stat {
+    text-align: center;
+    padding: 8px;
+    background: #fff;
+    border-radius: 8px;
+}
+
+.group-stat-label {
+    display: block;
+    font-size: 0.7rem;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.group-stat-value {
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.group-stat-value.highlight {
+    color: #c8102e;
+}
+
+.group-total-time {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #e0e0e0;
+    text-align: center;
+}
+
+.total-time-label {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.total-time-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1a1a2e;
+}

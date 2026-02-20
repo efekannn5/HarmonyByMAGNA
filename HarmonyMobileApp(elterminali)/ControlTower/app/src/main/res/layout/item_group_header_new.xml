@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Grup Başlığı - Tıklanabilir, Expandable -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/groupHeaderRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_marginTop="12dp"
+    android:layout_marginBottom="4dp"
+    android:background="@drawable/bg_group_header_strong"
+    android:padding="18dp"
+    android:elevation="4dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?android:attr/selectableItemBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Sol kenar vurgu çizgisi -->
+        <View
+            android:layout_width="5dp"
+            android:layout_height="48dp"
+            android:background="#42A5F5"
+            android:layout_marginEnd="16dp"/>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvGroupName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Forklift Yükleme Alanı 1"
+                android:textColor="#FFFFFF"
+                android:textSize="21sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.02"/>
+
+            <TextView
+                android:id="@+id/tvPartNumber"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="PN: 12345678"
+                android:textColor="#7F8FA6"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp"
+                android:visibility="gone"/>
+                
+            <!-- Telemetri Özeti (Grup seviyesinde) -->
+            <LinearLayout
+                android:id="@+id/groupTelemetryRow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="6dp"
+                android:visibility="gone">
+                
+                <TextView
+                    android:id="@+id/tvGroupTelemetry"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📦 12/20 VIN · ⚠️ 3 Bekleyen"
+                    android:textColor="#90CAF9"
+                    android:textSize="13sp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Sağ taraf: İlerleme Badge + Expand Icon -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Toplam İlerleme Badge -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_badge"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="8dp"
+                android:gravity="center"
+                android:layout_marginEnd="12dp">
+
+                <TextView
+                    android:id="@+id/tvGroupProgress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="3/8"
+                    android:textColor="#4CAF50"
+                    android:textSize="18sp"
+                    android:textStyle="bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=" DOLLY"
+                    android:textColor="#7F8FA6"
+                    android:textSize="10sp"
+                    android:layout_marginStart="4dp"/>
+            </LinearLayout>
+            
+            <!-- Expand/Collapse İkonu -->
+            <TextView
+                android:id="@+id/tvExpandIcon"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:text="▼"
+                android:textColor="#90CAF9"
+                android:textSize="16sp"
+                android:gravity="center"
+                android:background="@drawable/bg_badge"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Doluluk Çubuğu (Yeşil - Yüzdeye göre) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="12dp">
+        
+        <ProgressBar
+            android:id="@+id/groupProgressBar"
+            android:layout_width="match_parent"
+            android:layout_height="6dp"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:progressTint="#4CAF50"
+            android:progressBackgroundTint="#2B3340"
+            android:progress="37"
+            android:max="100"/>
+            
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+            
+            <TextView
+                android:id="@+id/tvProgressInfo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="3/8 DOLLY TARANDI"
+                android:textColor="#90CAF9"
+                android:textSize="11sp"
+                android:textStyle="bold"/>
+                
+            <TextView
+                android:id="@+id/tvProgressPercent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="37%"
+                android:textColor="#4CAF50"
+                android:textSize="11sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Alt Divider - Açıkken görünür -->
+    <View
+        android:id="@+id/dividerLine"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#42A5F5"
+        android:layout_marginTop="10dp"
+        android:alpha="0.4"
+        android:visibility="gone"/>
+</LinearLayout>

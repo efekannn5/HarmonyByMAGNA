@@ -1,0 +1,246 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<!-- Database Monitoring Widget -->
+<section class="card monitoring-widget">
+  <div class="card-header">
+    <h2>Veri Tabanı İzleme</h2>
+    <p>DollyEOLInfo tablosu sürekli izleniyor</p>
+  </div>
+  <div class="monitoring-status">
+    <div class="status-indicator">
+      <span id="monitoringStatus" class="status-dot offline"></span>
+      <span id="monitoringText">Kontrol ediliyor...</span>
+    </div>
+    <div class="monitoring-stats">
+      <div class="stat-item">
+        <span class="stat-label">Son Kontrol:</span>
+        <span id="lastCheck">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Kontrol Aralığı:</span>
+        <span id="checkInterval">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Yeni Kayıt:</span>
+        <span id="newRecords">0</span>
+      </div>
+    </div>
+    <div class="monitoring-controls">
+      <button id="refreshMonitoring" class="btn btn-small">Yenile</button>
+      <button id="toggleMonitoring" class="btn btn-small">Durdur</button>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <h2>Web Operatör Görevleri</h2>
+    <p>Terminal tarafından oluşturulan ve web operatörlere atanan part number bazlı görevler {% if pagination %}(İlk {{ pagination.shown_limit }} gösteriliyor, Toplam: {{ pagination.total_tasks }}){% endif %}</p>
+  </div>
+  <button class="btn btn-sm btn-secondary" id="toggleFilterBtn" style="margin-bottom:10px;">Filtrele</button>
+  <div id="filterPanel" style="display:none; margin-bottom:16px; background:#f7f7f7; border:1px solid #e0e0e0; border-radius:6px; padding:12px;">
+    <form method="get" id="filterForm">
+      <div style="display:flex; flex-wrap:wrap; gap:10px;">
+        <input type="text" name="filter_part_number" placeholder="Part Number" value="{{ filters['PartNumber'] if filters and filters['PartNumber'] else '' }}">
+        <input type="text" name="filter_status" placeholder="Durum" value="{{ filters['Status'] if filters and filters['Status'] else '' }}">
+        <input type="text" name="filter_assigned" placeholder="Atanan" value="{{ filters['AssignedTo'] if filters and filters['AssignedTo'] else '' }}">
+        <input type="text" name="filter_group_tag" placeholder="Etiket Türü" value="{{ filters['GroupTag'] if filters and filters['GroupTag'] else '' }}">
+        <input type="text" name="filter_created_at" placeholder="Oluşturma (yyyy-mm-dd)" value="{{ filters['CreatedAt'] if filters and filters['CreatedAt'] else '' }}">
+        <button type="submit" class="btn btn-sm btn-primary">Filtreyi Uygula</button>
+        <a href="{{ url_for('dashboard.dashboard_home') }}" class="btn btn-sm btn-light">Temizle</a>
+      </div>
+    </form>
+  </div>
+  {% if operator_tasks %}
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>Part Number</th>
+          <th>Durum</th>
+          <th>Atanan</th>
+          <th>Etiket Türü</th>
+          <th>İlerleme</th>
+          <th>Oluşturma</th>
+          <th>İşlemler</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in operator_tasks %}
+        <tr>
+          <td><strong>{{ task.part_number }}</strong></td>
+          <td><span class="task-status status-{{ task.status }}">{{ task.status.title().replace('_', ' ') }}</span></td>
+          <td>{{ task.assigned_user_name or 'Atanmamış' }}</td>
+          <td>
+            <span class="shipping-tag tag-{{ task.group_tag }}">
+              {% if task.group_tag == "asn" %}ASN{% elif task.group_tag == "irsaliye" %}İrsaliye{% else %}ASN + İrsaliye{% endif %}
+            </span>
+          </td>
+          <td>
+            <div class="progress-mini">
+              <div class="progress-fill-mini" style="width: {{ task.progress_percentage }}%"></div>
+            </div>
+            <span class="progress-text-mini">{{ task.processed_items }}/{{ task.total_items }}</span>
+          </td>
+          <td>{{ task.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+          <td>
+            <a href="{{ url_for('dashboard.operator_task_detail', part_number=task.part_number) }}" class="btn btn-sm btn-primary">Detay</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">Henüz web operatör görevi oluşturulmamış.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <h2>Terminal Bekleyen Kayıtlar</h2>
+    <p>Forklift tarafından okutulan fakat terminalden submit edilmeyi bekleyen dolly'ler {% if pagination %}(İlk {{ pagination.shown_limit }} gösteriliyor, Toplam: {{ pagination.total_hold }}){% endif %}</p>
+  </div>
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>Dolly No</th>
+          <th>VIN</th>
+          <th>Durum</th>
+          <th>Terminal Kullanıcısı</th>
+          <th>Okutma Zamanı</th>
+          <th>Submit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for hold in hold_entries %}
+        <tr>
+          <td>{{ hold.dolly_no }}</td>
+          <td>{{ hold.vin_no }}</td>
+          <td>{{ hold.status }}</td>
+          <td>{{ hold.terminal_user or '-' }}</td>
+          <td>{{ hold.scanned_at or '-' }}</td>
+          <td>{{ hold.submitted_at or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="empty">Bekleyen kayıt yok.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+let monitoringRefreshInterval;
+
+// Monitoring durumunu kontrol et
+function checkMonitoringStatus() {
+    fetch('/api/monitoring/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateMonitoringUI(data.monitoring);
+            } else {
+                console.error('Monitoring status error:', data.message);
+                updateMonitoringUI({ is_running: false });
+            }
+        })
+        .catch(error => {
+            console.error('Monitoring fetch error:', error);
+            updateMonitoringUI({ is_running: false });
+        });
+}
+
+// Monitoring UI'sını güncelle
+function updateMonitoringUI(stats) {
+    const statusDot = document.getElementById('monitoringStatus');
+    const statusText = document.getElementById('monitoringText');
+    const lastCheck = document.getElementById('lastCheck');
+    const checkInterval = document.getElementById('checkInterval');
+    const toggleBtn = document.getElementById('toggleMonitoring');
+    
+    if (stats.is_running) {
+        statusDot.className = 'status-dot online';
+        statusText.textContent = '🟢 Aktif İzleniyor';
+        toggleBtn.innerHTML = 'Durdur';
+        toggleBtn.onclick = () => toggleMonitoring(false);
+    } else {
+        statusDot.className = 'status-dot offline';
+        statusText.textContent = '🔴 Durmuş';
+        toggleBtn.innerHTML = 'Başlat';
+        toggleBtn.onclick = () => toggleMonitoring(true);
+    }
+    
+    // Son kontrol zamanı
+    if (stats.last_check_times && stats.last_check_times.DollyEOLInfo) {
+        const lastCheckTime = new Date(stats.last_check_times.DollyEOLInfo);
+        lastCheck.textContent = lastCheckTime.toLocaleTimeString('tr-TR');
+    } else {
+        lastCheck.textContent = 'Henüz yok';
+    }
+    
+    // Kontrol aralığı
+    checkInterval.textContent = `${stats.check_interval || 1} saniye`;
+}
+
+// Monitoring'i başlat/durdur
+function toggleMonitoring(start) {
+    const endpoint = start ? '/api/monitoring/start' : '/api/monitoring/stop';
+    const toggleBtn = document.getElementById('toggleMonitoring');
+    
+    toggleBtn.disabled = true;
+    toggleBtn.textContent = start ? '🔄 Başlatılıyor...' : '🔄 Durduruluyor...';
+    
+    fetch(endpoint, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                checkMonitoringStatus(); // Durumu yenile
+            } else {
+                alert('Hata: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Toggle monitoring error:', error);
+            alert('Monitoring toggle işleminde hata oluştu');
+        })
+        .finally(() => {
+            toggleBtn.disabled = false;
+        });
+}
+
+// Sayfa yüklendiğinde
+document.addEventListener('DOMContentLoaded', function() {
+    // İlk durumu kontrol et
+    checkMonitoringStatus();
+    
+    // Her 5 saniyede bir durumu yenile
+    monitoringRefreshInterval = setInterval(checkMonitoringStatus, 5000);
+    
+    // Manual yenileme butonu
+    document.getElementById('refreshMonitoring').onclick = checkMonitoringStatus;
+});
+
+// Sayfa kapanırken interval'i temizle
+window.addEventListener('beforeunload', function() {
+    if (monitoringRefreshInterval) {
+        clearInterval(monitoringRefreshInterval);
+    }
+});
+
+// Filtre panelini göster/gizle
+document.addEventListener('DOMContentLoaded', function() {
+  const btn = document.getElementById('toggleFilterBtn');
+  const panel = document.getElementById('filterPanel');
+  panel.style.display = 'none'; // default kapalı
+  btn.onclick = function() {
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  };
+});
+</script>
+
+{% endblock %}

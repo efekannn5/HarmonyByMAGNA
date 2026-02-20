@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="card settings-nav">
+  <h2>Yönetim Menüsü</h2>
+  <div class="settings-grid">
+    <a class="settings-card" href="{{ url_for('dashboard.manage_groups_view') }}">
+      <h3>Grup Yönetimi</h3>
+      <p>EOL istasyonlarını gruplara ekleyin, ASN/İrsaliye etiketlerini belirleyin.</p>
+    </a>
+    <a class="settings-card" href="{{ url_for('dashboard.admin_users') }}">
+      <h3>Kullanıcılar & Barkod</h3>
+      <p>Admin, operator ve terminal kullanıcılarını yönetin, barkod/OTP üretin.</p>
+    </a>
+    <a class="settings-card" href="{{ url_for('dashboard.admin_logs') }}">
+      <h3>Loglar</h3>
+      <p>Audit kayıtlarını ve uygulama log dosyasının son satırlarını inceleyin.</p>
+    </a>
+  </div>
+</section>
+{% endblock %}

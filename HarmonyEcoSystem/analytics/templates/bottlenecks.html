@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Bottleneck Detection{% endblock %}
+{% block page_title %}Production Bottleneck Analysis{% endblock %}
+
+{% block content %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>Bottleneck Detection:</strong> Identifies stages with longest wait times and critical delays
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card danger">
+            <div class="icon-wrapper">
+                <i class="bi bi-hourglass-top"></i>
+            </div>
+            <h6>Critical Delays</h6>
+            <div class="value" id="criticalCount">-</div>
+            <div class="change negative">
+                <span>>6 hours wait</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card warning">
+            <div class="icon-wrapper">
+                <i class="bi bi-clock"></i>
+            </div>
+            <h6>Warning Level</h6>
+            <div class="value" id="warningCount">-</div>
+            <div class="change">
+                <span>5-6 hours wait</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card primary">
+            <div class="icon-wrapper">
+                <i class="bi bi-speedometer"></i>
+            </div>
+            <h6>Max Wait Time</h6>
+            <div class="value" id="maxWait">-</div>
+            <div class="change">
+                <span>hours</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-12">
+        <div class="chart-card">
+            <h6><i class="bi bi-exclamation-triangle"></i> Bottlenecks by Stage</h6>
+            <canvas id="bottleneckChart" height="100"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-3">
+    <div class="col-md-12">
+        <div class="chart-card">
+            <h6><i class="bi bi-table"></i> Critical Alerts</h6>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Stage</th>
+                            <th class="text-end">Stuck Dollies</th>
+                            <th class="text-end">Avg Wait Time</th>
+                            <th class="text-end">Max Wait Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bottleneckTable">
+                        <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+fetch('/analytics/api/bottlenecks')
+    .then(r => r.json())
+    .then(data => {
+        let totalCritical = 0;
+        let totalWarning = 0;
+        let maxWaitTime = 0;
+        
+        data.forEach(b => {
+            totalCritical += b.critical || 0;
+            totalWarning += b.warning || 0;
+            maxWaitTime = Math.max(maxWaitTime, b.max_wait || 0);
+        });
+        
+        document.getElementById('criticalCount').textContent = totalCritical;
+        document.getElementById('warningCount').textContent = totalWarning;
+        document.getElementById('maxWait').textContent = maxWaitTime.toFixed(1);
+        
+        const ctx = document.getElementById('bottleneckChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(b => b.stage),
+                datasets: [
+                    {
+                        label: 'Critical (>6h)',
+                        data: data.map(b => b.critical || 0),
+                        backgroundColor: '#ef4444'
+                    },
+                    {
+                        label: 'Warning (5-6h)',
+                        data: data.map(b => b.warning || 0),
+                        backgroundColor: '#fbbf24'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: { x: { stacked: true }, y: { stacked: true } }
+            }
+        });
+        
+        const tbody = document.getElementById('bottleneckTable');
+        tbody.innerHTML = data.map(b => `
+            <tr>
+                <td><strong>${b.stage}</strong></td>
+                <td class="text-end">${b.count || 0}</td>
+                <td class="text-end">${b.avg_wait ? b.avg_wait.toFixed(1) : '-'} hrs</td>
+                <td class="text-end">${b.max_wait ? b.max_wait.toFixed(1) : '-'} hrs</td>
+                <td>
+                    ${b.critical > 0 ? '<span class="badge bg-danger">CRITICAL</span>' : 
+                      b.warning > 0 ? '<span class="badge bg-warning">WARNING</span>' : 
+                      '<span class="badge bg-success">NORMAL</span>'}
+                </td>
+            </tr>
+        `).join('');
+    });
+</script>
+{% endblock %}

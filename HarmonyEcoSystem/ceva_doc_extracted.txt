@@ -1,0 +1,341 @@
+2023
+
+Ceva Logistics
+Yazılım Geliştirme Ekibi
+
+DT SUPPLIER WEB SERVİS
+DOKÜMANTASYONU
+Developer Guide v2.0
+
+CEVA DT.Supplier.WebService– Müşteri Servis Arayüzü
+Dokümantasyonu
+
+2023
+
+Revision History
+Sürüm Değişiklik Yapan
+
+Değişiklik Özeti
+
+1.0
+
+Fatih SAVAŞ
+
+1- Doküman Oluşturuldu.
+
+1.1
+
+Fatih SAVAŞ
+
+1- InsertEntDtAsn metodu oluşturuldu
+
+Developer Guide v2.0
+
+Page 1
+
+CEVA DT.Supplier.WebService– Müşteri Servis Arayüzü
+Dokümantasyonu
+
+2023
+
+İçerik
+Revision History ....................................................................................................................................... 1
+1.Giriş....................................................................................................................................................... 3
+1.1 Erişim yöntemleri .......................................................................................................................... 3
+1.1.1 Erişim URL’leri ......................................................................................................................... 3
+3. Servisler ............................................................................................................................................... 4
+3.1 Authentication ............................................................................................................................... 4
+3.2 Services .......................................................................................................................................... 4
+3.2.1 Service.asmx ........................................................................................................................... 4
+3.2.1.1 InsertEntDtAsn ...................................................................................................................... 4
+4.WSDL Dosyaları .................................................................................................................................... 7
+5.Hata Dönüşleri ve Açıklamaları ............................................................................................................ 8
+
+Developer Guide v2.0
+
+Page 2
+
+CEVA DT.Supplier.WebService– Müşteri Servis Arayüzü
+Dokümantasyonu
+
+2023
+
+1.Giriş
+1.1 Erişim yöntemleri
+1.1.1 Erişim URL’leri
+Müşteriye açık servislerdir. Müşteri ile anlaşma yapıldığı andan itibaren belli tarihe kadar müşteri
+erişimine açılırlar.
+UAT
+
+:
+
+https://test.cevakurumsal.com/Ceva.DT.Supplier.WebService/DTSupplierService.
+asmx
+Sadece UAT testleri için geçerlidir canlı geçişte her tedarikçi için ayrı kullanıcı
+hesabı paylaşılacaktır.
+Kullanıcı Adı : CEVADT
+Parola : Welcome1+
+Production Servisleri: Canlı ortamda kullanılan servislerdir.
+Live
+
+:
+
+Developer Guide v2.0
+
+Page 3
+
+CEVA DT.Supplier.WebService– Müşteri Servis Arayüzü
+Dokümantasyonu
+
+2023
+
+3. Servisler
+3.1 Authentication
+Her servis çağrıldığında, müşteri için tanımlanmış olan UserName ve Password
+parametrelerinin gönderilmesi gerekmektedir.
+NOT: Kullanıcı bilgileri CEVA proje yöneticisi tarafından sağlanmaktadır.
+Request:
+<?xml version="1.0"
+</LoginInfo>
+...
+Login Info class:
+Parametre
+
+Tip
+
+Zorunlulu
+k
+
+Açıklama
+
+UserName
+
+String(50)
+
+E
+
+Tedarikçi içi tanımlı kullanıcı adı
+
+Password
+
+String (50)
+
+E
+
+Tedarikçi içi tanımlı kullanıcı parola
+
+Örnek
+
+Response:
+Çağrılan method’un response’unu değiştirmez.
+Eğer authentication fail olursa hata mesajı gönderilir.
+
+3.2 Services
+3.2.1 Service.asmx
+
+Entegrasyon ile ilgili işlemlerin toplandığı arayüzdür.
+3.2.1.1 InsertEntDtAsn
+Araca sıralı olarak yüklenen malzeme bilgisini ASN olarak CEVA sistemine göndermek için
+kullanılmaktadır.
+Request:
+
+https://test.cevakurumsal.com/Ceva.DT.Supplier.WebService/DTSupplierService.
+asmx?op=InsertEntDtAsn
+POST /Ceva.DT.Supplier.WebService/DTSupplierService.asmx HTTP/1.1
+Host: test.cevakurumsal.com
+Content-Type: text/xml; charset=utf-8
+Content-Length: length
+SOAPAction: "http://tempuri.org/InsertEntDtAsn"
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+<soap:Body>
+<InsertEntDtAsn xmlns="http://tempuri.org/">
+
+Developer Guide v2.0
+
+Page 4
+
+CEVA DT.Supplier.WebService– Müşteri Servis Arayüzü
+Dokümantasyonu
+
+2023
+
+<dtasnItem>
+<DTASNItem>
+<TripCode>string</TripCode>
+<SupplierCode>string</SupplierCode>
+<DTASNItemDetails>
+<DTASNItemDetail xsi:nil="true" />
+<DTASNItemDetail xsi:nil="true" />
+</DTASNItemDetails>
+</DTASNItem>
+<DTASNItem>
+<TripCode>string</TripCode>
+<SupplierCode>string</SupplierCode>
+<DTASNItemDetails>
+<DTASNItemDetail xsi:nil="true" />
+<DTASNItemDetail xsi:nil="true" />
+</DTASNItemDetails>
+</DTASNItem>
+</dtasnItem>
+<login>
+<UserName>string</UserName>
+<Password>string</Password>
+</login>
+</InsertEntDtAsn>
+</soap:Body>
+</soap:Envelope>
+Zorunluluk
+
+Açıklama
+
+TripCode
+
+Parametre
+String(50)
+
+Tip
+
+E
+
+Örnek
+
+SupplierCode
+
+String (50)
+
+E
+
+CEVA sisteminde sefer kodu
+Tedarikçiye ait FORD GSDB
+kod
+
+DTASNItemDetails
+
+List<DTASNItemDetail>
+
+E
+AsnDetail Sınıfı elemanları
+
+Parametre
+
+Tip
+
+Zorunluluk
+
+Açıklama
+
+DollyNumber
+
+String (50)
+
+H
+
+VINNumber
+
+String (50)
+
+E
+
+Parçanın konulduğu
+kasa numarası
+Araç VIN numarası
+
+PartNumber
+QTY
+
+String (50)
+
+E
+
+Parça Kodu
+
+İnt
+
+E
+
+Adet
+
+ProcessTime
+
+DateTime
+
+E
+
+İşlem zamanı
+
+Örnek
+
+RecordType Enum Sınıfı Elemanları
+Parametre
+
+Açıklama
+
+Response:
+
+Developer Guide v2.0
+
+Page 5
+
+CEVA DT.Supplier.WebService– Müşteri Servis Arayüzü
+Dokümantasyonu
+Parametre
+
+Tip
+
+Successful
+
+boolean
+
+ResultDescription string
+
+Açıklama
+Sefere ait ASN başarılı olarak
+sisteme kaydedilirse true döner
+değilse false döner
+False durumunda hata mesajını
+döner.
+
+2023
+
+Örnek
+
+<soap:Body>
+<InsertEntDtAsnResponse xmlns="http://tempuri.org/">
+<InsertEntDtAsnResult>
+<Successful>boolean</Successful>
+<ResultDescription>string</ResultDescription>
+</InsertEntDtAsnResult>
+</InsertEntDtAsnResponse>
+</soap:Body>
+
+4.WSDL Dosyaları
+Service
+CEVA Service
+
+URL
+https://test.cevakurumsal.com/Ceva.DT.Supplier.WebService/DTSupplierService.asmx?wsdl
+
+Developer Guide v2.0
+
+Page 6
+
+CEVA DT.Supplier.WebService– Müşteri Servis Arayüzü
+Dokümantasyonu
+
+2023
+
+5.Hata Dönüşleri ve Açıklamaları
+Hata - TR
+
+Developer Guide v2.0
+
+Hata - EN
+
+Hata Açıklaması
+
+Page 7
+
+

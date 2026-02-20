@@ -1,0 +1,30 @@
+[Unit]
+Description=HarmonyEcoSystem Flask Application
+After=network.target
+
+[Service]
+Type=simple
+User=ymc_harmony
+Group=ymc_harmony
+WorkingDirectory=/home/ymc_harmony/Harmony/HarmonyEcoSystem/HarmonyEcoSystem
+Environment="PATH=/usr/bin:/usr/local/bin"
+
+# Üretim: Ana + Analytics birlikte (run.py) — manuel çalıştırmadaki davranış
+ExecStart=/usr/bin/python3 /home/ymc_harmony/Harmony/HarmonyEcoSystem/HarmonyEcoSystem/run.py
+
+# Alternatif: Sadece ana uygulamayı gunicorn ile çalıştırmak istersen
+# ExecStart=/usr/local/bin/gunicorn --config gunicorn_config.py wsgi:app
+
+Restart=always
+RestartSec=10
+
+# Güvenlik ayarları
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=append:/home/ymc_harmony/Harmony/HarmonyEcoSystem/HarmonyEcoSystem/logs/app.log
+StandardError=append:/home/ymc_harmony/controltower/Harmony/HarmonyEcoSystem/logs/app_error.log
+
+[Install]
+WantedBy=multi-user.target

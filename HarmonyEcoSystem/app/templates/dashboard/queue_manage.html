@@ -1,0 +1,675 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<section class="card">
+  <div class="card-header">
+    <h2>📋 Sıra Yönetimi</h2>
+    <p>Dolly sırasından kayıtları manuel olarak kaldırabilir ve <strong>süresiz</strong> olarak arşivleyebilirsiniz</p>
+  </div>
+
+  {% if message %}
+  <div class="alert success">{{ message }}</div>
+  {% endif %}
+  {% if error %}
+  <div class="alert error">{{ error }}</div>
+  {% endif %}
+
+  <!-- Aktif Sıradaki Dolly'ler -->
+  <div class="queue-section">
+    <h3>🚛 Aktif Sırada Bekleyen Dolly'ler 
+      {% if pagination %}
+        (Toplam: {{ pagination.total_count }} - Sayfa {{ pagination.page }}/{{ pagination.total_pages }})
+      {% else %}
+        ({{ queue_dollys|length }})
+      {% endif %}
+    </h3>
+    
+    <!-- Filtreleme ve Arama -->
+    <div class="filter-section">
+      <form method="get" action="{{ url_for('dashboard.manage_queue') }}" class="filter-form">
+        <div class="filter-group">
+          <input type="text" 
+                 name="search" 
+                 placeholder="Genel ara (Dolly, VIN, Müşteri, EOL, Barkod, Kaldıran, Neden)..." 
+                 value="{{ search_term or search_dolly or '' }}"
+                 class="filter-input">
+
+          <input type="text" 
+                 name="filter_dolly_no" 
+                 placeholder="Dolly No" 
+                 value="{{ filters.get('filter_dolly_no', '') if filters else '' }}"
+                 class="filter-input">
+
+          <input type="text" 
+                 name="filter_vin" 
+                 placeholder="VIN No" 
+                 value="{{ filters.get('filter_vin', '') if filters else '' }}"
+                 class="filter-input">
+
+          <input type="text" 
+                 name="filter_customer_ref" 
+                 placeholder="Müşteri Ref" 
+                 value="{{ filters.get('filter_customer_ref', '') if filters else '' }}"
+                 class="filter-input">
+
+          <input type="text" 
+                 name="filter_eol_name" 
+                 placeholder="EOL" 
+                 value="{{ filters.get('filter_eol_name', '') if filters else '' }}"
+                 class="filter-input">
+
+          <input type="text" 
+                 name="filter_eol_id" 
+                 placeholder="EOL ID" 
+                 value="{{ filters.get('filter_eol_id', '') if filters else '' }}"
+                 class="filter-input">
+
+          <input type="text" 
+                 name="filter_barcode" 
+                 placeholder="Barkod" 
+                 value="{{ filters.get('filter_barcode', '') if filters else '' }}"
+                 class="filter-input">
+
+          <input type="text" 
+                 name="filter_removed_by" 
+                 placeholder="Kaldıran" 
+                 value="{{ filters.get('filter_removed_by', '') if filters else '' }}"
+                 class="filter-input">
+
+          <input type="text" 
+                 name="filter_reason" 
+                 placeholder="Neden" 
+                 value="{{ filters.get('filter_reason', '') if filters else '' }}"
+                 class="filter-input">
+          
+          <select name="per_page" class="filter-select">
+            <option value="50" selected>50/sayfa</option>
+          </select>
+          
+          <button type="submit" class="btn btn-primary">🔍 Filtrele</button>
+          <a href="{{ url_for('dashboard.manage_queue') }}" class="btn btn-secondary">↻ Temizle</a>
+        </div>
+      </form>
+    </div>
+    
+    <form method="post" action="{{ url_for('dashboard.remove_from_queue') }}" id="removeForm">
+      <div class="removal-options">
+        <div class="form-group">
+          <label for="reason">Kaldırma Nedeni (Opsiyonel)</label>
+          <input type="text" id="reason" name="reason" placeholder="Örn: Hasar, Yanlış okutma, Kalite kontrolü">
+        </div>
+        
+        <div class="info-box">
+          <strong>ℹ️ Not:</strong> Kaldırılan dolly'ler <strong>süresiz olarak arşivlenecektir</strong>. 
+          İstediğiniz zaman geri yükleyebilirsiniz.
+        </div>
+        
+        <div class="form-actions">
+          <button type="submit" class="btn btn-danger" id="removeBtn" disabled>
+            🗄️ Seçili Dolly'leri Arşivle (<span id="selectedCount">0</span>)
+          </button>
+          <button type="button" class="btn btn-secondary" id="selectAllBtn">Tümünü Seç</button>
+          <button type="button" class="btn btn-secondary" id="deselectAllBtn">Seçimi Temizle</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 40px;">
+                <input type="checkbox" id="masterCheckbox">
+              </th>
+              <th>Dolly No</th>
+              <th>VIN Sayısı</th>
+              <th>Müşteri Ref.</th>
+              <th>EOL</th>
+              <th>EOL Tarihi</th>
+              <th>Toplam Adet</th>
+              <th>Sıraya Eklenme</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for dolly in queue_dollys %}
+            <tr>
+              <td>
+                <input type="checkbox" 
+                       name="dolly_selection" 
+                       value="{{ dolly.DollyNo }}"
+                       data-vin-count="{{ dolly.VinCount }}"
+                       class="dolly-checkbox">
+              </td>
+              <td><strong>{{ dolly.DollyNo }}</strong></td>
+              <td><span class="badge badge-info">{{ dolly.VinCount }} VIN</span></td>
+              <td>{{ dolly.CustomerReferans or '-' }}</td>
+              <td>{{ dolly.EOLName or '-' }}</td>
+              <td>{{ dolly.EOLDATE.strftime('%d.%m.%Y') if dolly.EOLDATE else '-' }}</td>
+              <td>{{ dolly.TotalAdet or '-' }}</td>
+              <td>{{ dolly.InsertedAt.strftime('%d.%m.%Y %H:%M') if dolly.InsertedAt else '-' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="empty">Sırada bekleyen dolly yok.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Pagination Controls -->
+      {% if pagination and pagination.total_pages > 1 %}
+      <div class="pagination">
+        {% if pagination.has_prev %}
+          <a href="{{ url_for('dashboard.manage_queue', page=1, per_page=pagination.per_page, search=search_term or search_dolly,
+                              filter_dolly_no=filters.get('filter_dolly_no', '') if filters else '',
+                              filter_vin=filters.get('filter_vin', '') if filters else '',
+                              filter_customer_ref=filters.get('filter_customer_ref', '') if filters else '',
+                              filter_eol_name=filters.get('filter_eol_name', '') if filters else '',
+                              filter_eol_id=filters.get('filter_eol_id', '') if filters else '',
+                              filter_barcode=filters.get('filter_barcode', '') if filters else '',
+                              filter_removed_by=filters.get('filter_removed_by', '') if filters else '',
+                              filter_reason=filters.get('filter_reason', '') if filters else '') }}" 
+             class="page-link">« İlk</a>
+          <a href="{{ url_for('dashboard.manage_queue', page=pagination.page-1, per_page=pagination.per_page, search=search_term or search_dolly,
+                              filter_dolly_no=filters.get('filter_dolly_no', '') if filters else '',
+                              filter_vin=filters.get('filter_vin', '') if filters else '',
+                              filter_customer_ref=filters.get('filter_customer_ref', '') if filters else '',
+                              filter_eol_name=filters.get('filter_eol_name', '') if filters else '',
+                              filter_eol_id=filters.get('filter_eol_id', '') if filters else '',
+                              filter_barcode=filters.get('filter_barcode', '') if filters else '',
+                              filter_removed_by=filters.get('filter_removed_by', '') if filters else '',
+                              filter_reason=filters.get('filter_reason', '') if filters else '') }}" 
+             class="page-link">‹ Önceki</a>
+        {% else %}
+          <span class="page-link disabled">« İlk</span>
+          <span class="page-link disabled">‹ Önceki</span>
+        {% endif %}
+        
+        <span class="page-info">
+          Sayfa {{ pagination.page }} / {{ pagination.total_pages }}
+        </span>
+        
+        {% if pagination.has_next %}
+          <a href="{{ url_for('dashboard.manage_queue', page=pagination.page+1, per_page=pagination.per_page, search=search_term or search_dolly,
+                              filter_dolly_no=filters.get('filter_dolly_no', '') if filters else '',
+                              filter_vin=filters.get('filter_vin', '') if filters else '',
+                              filter_customer_ref=filters.get('filter_customer_ref', '') if filters else '',
+                              filter_eol_name=filters.get('filter_eol_name', '') if filters else '',
+                              filter_eol_id=filters.get('filter_eol_id', '') if filters else '',
+                              filter_barcode=filters.get('filter_barcode', '') if filters else '',
+                              filter_removed_by=filters.get('filter_removed_by', '') if filters else '',
+                              filter_reason=filters.get('filter_reason', '') if filters else '') }}" 
+             class="page-link">Sonraki ›</a>
+          <a href="{{ url_for('dashboard.manage_queue', page=pagination.total_pages, per_page=pagination.per_page, search=search_term or search_dolly,
+                              filter_dolly_no=filters.get('filter_dolly_no', '') if filters else '',
+                              filter_vin=filters.get('filter_vin', '') if filters else '',
+                              filter_customer_ref=filters.get('filter_customer_ref', '') if filters else '',
+                              filter_eol_name=filters.get('filter_eol_name', '') if filters else '',
+                              filter_eol_id=filters.get('filter_eol_id', '') if filters else '',
+                              filter_barcode=filters.get('filter_barcode', '') if filters else '',
+                              filter_removed_by=filters.get('filter_removed_by', '') if filters else '',
+                              filter_reason=filters.get('filter_reason', '') if filters else '') }}" 
+             class="page-link">Son »</a>
+        {% else %}
+          <span class="page-link disabled">Sonraki ›</span>
+          <span class="page-link disabled">Son »</span>
+        {% endif %}
+      </div>
+      {% endif %}
+    </form>
+  </div>
+</section>
+
+<!-- Arşivlenmiş Dolly'ler -->
+<section class="card">
+  <div class="card-header">
+    <h2>🗄️ Arşivlenmiş Dolly'ler ({{ removed_pagination.total_count if removed_pagination else removed_dollys|length }})</h2>
+    <p>Sıradan kaldırılmış ve süresiz olarak arşivlenmiş kayıtlar</p>
+  </div>
+
+  <form method="post" action="{{ url_for('dashboard.restore_bulk') }}">
+    <div class="form-actions" style="justify-content: space-between; align-items: center; flex-wrap: wrap;">
+      <div>
+        <input type="checkbox" id="archiveMasterCheckbox">
+        <label for="archiveMasterCheckbox">Tümünü seç</label>
+      </div>
+      <div>
+        <button type="submit" class="btn btn-primary" id="restoreBulkBtn" disabled>
+          ↩️ Seçili Kaydı Geri Yükle (<span id="archiveSelectedCount">0</span>)
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 40px;"></th>
+            <th>Dolly No</th>
+            <th>VIN No</th>
+            <th>Müşteri Ref.</th>
+            <th>EOL</th>
+            <th>Kaldırma Tarihi</th>
+            <th>Kaldıran</th>
+            <th>Neden</th>
+            <th>İşlem</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for removed in removed_dollys %}
+          <tr>
+            <td>
+              <input type="checkbox"
+                     name="archive_selection"
+                     value="{{ removed.id }}"
+                     class="archive-checkbox">
+            </td>
+            <td><strong>{{ removed.dolly_no }}</strong></td>
+            <td>{{ removed.vin_no }}</td>
+            <td>{{ removed.customer_referans or '-' }}</td>
+            <td>{{ removed.eol_name or '-' }}</td>
+            <td>{{ removed.removed_at[:16] if removed.removed_at else '-' }}</td>
+            <td>{{ removed.removed_by or '-' }}</td>
+            <td>{{ removed.removal_reason or '-' }}</td>
+            <td>
+              <form method="post" action="{{ url_for('dashboard.restore_to_queue', archive_id=removed.id) }}" style="display: inline;">
+                <button type="submit" class="btn btn-sm btn-primary" onclick="return confirm('Bu dolly\\'yi sıraya geri yüklemek istediğinize emin misiniz?')">
+                  ↩️ Tekil Geri Yükle
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="9" class="empty">Arşivde kayıt yok.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+
+  {% if removed_pagination and removed_pagination.total_pages > 1 %}
+  <div class="pagination">
+    {% if removed_pagination.has_prev %}
+      <a href="{{ url_for('dashboard.manage_queue', page=pagination.page, per_page=pagination.per_page, removed_page=1, search=search_term or search_dolly,
+                          filter_dolly_no=filters.get('filter_dolly_no', '') if filters else '',
+                          filter_vin=filters.get('filter_vin', '') if filters else '',
+                          filter_customer_ref=filters.get('filter_customer_ref', '') if filters else '',
+                          filter_eol_name=filters.get('filter_eol_name', '') if filters else '',
+                          filter_eol_id=filters.get('filter_eol_id', '') if filters else '',
+                          filter_barcode=filters.get('filter_barcode', '') if filters else '',
+                          filter_removed_by=filters.get('filter_removed_by', '') if filters else '',
+                          filter_reason=filters.get('filter_reason', '') if filters else '') }}" class="page-link">« İlk</a>
+      <a href="{{ url_for('dashboard.manage_queue', page=pagination.page, per_page=pagination.per_page, removed_page=removed_pagination.page-1, search=search_term or search_dolly,
+                          filter_dolly_no=filters.get('filter_dolly_no', '') if filters else '',
+                          filter_vin=filters.get('filter_vin', '') if filters else '',
+                          filter_customer_ref=filters.get('filter_customer_ref', '') if filters else '',
+                          filter_eol_name=filters.get('filter_eol_name', '') if filters else '',
+                          filter_eol_id=filters.get('filter_eol_id', '') if filters else '',
+                          filter_barcode=filters.get('filter_barcode', '') if filters else '',
+                          filter_removed_by=filters.get('filter_removed_by', '') if filters else '',
+                          filter_reason=filters.get('filter_reason', '') if filters else '') }}" class="page-link">‹ Önceki</a>
+    {% else %}
+      <span class="page-link disabled">« İlk</span>
+      <span class="page-link disabled">‹ Önceki</span>
+    {% endif %}
+
+    <span class="page-info">
+      Arşiv Sayfa {{ removed_pagination.page }} / {{ removed_pagination.total_pages }}
+    </span>
+
+    {% if removed_pagination.has_next %}
+      <a href="{{ url_for('dashboard.manage_queue', page=pagination.page, per_page=pagination.per_page, removed_page=removed_pagination.page+1, search=search_term or search_dolly,
+                          filter_dolly_no=filters.get('filter_dolly_no', '') if filters else '',
+                          filter_vin=filters.get('filter_vin', '') if filters else '',
+                          filter_customer_ref=filters.get('filter_customer_ref', '') if filters else '',
+                          filter_eol_name=filters.get('filter_eol_name', '') if filters else '',
+                          filter_eol_id=filters.get('filter_eol_id', '') if filters else '',
+                          filter_barcode=filters.get('filter_barcode', '') if filters else '',
+                          filter_removed_by=filters.get('filter_removed_by', '') if filters else '',
+                          filter_reason=filters.get('filter_reason', '') if filters else '') }}" class="page-link">Sonraki ›</a>
+      <a href="{{ url_for('dashboard.manage_queue', page=pagination.page, per_page=pagination.per_page, removed_page=removed_pagination.total_pages, search=search_term or search_dolly,
+                          filter_dolly_no=filters.get('filter_dolly_no', '') if filters else '',
+                          filter_vin=filters.get('filter_vin', '') if filters else '',
+                          filter_customer_ref=filters.get('filter_customer_ref', '') if filters else '',
+                          filter_eol_name=filters.get('filter_eol_name', '') if filters else '',
+                          filter_eol_id=filters.get('filter_eol_id', '') if filters else '',
+                          filter_barcode=filters.get('filter_barcode', '') if filters else '',
+                          filter_removed_by=filters.get('filter_removed_by', '') if filters else '',
+                          filter_reason=filters.get('filter_reason', '') if filters else '') }}" class="page-link">Son ›</a>
+    {% else %}
+      <span class="page-link disabled">Sonraki ›</span>
+      <span class="page-link disabled">Son ›</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+
+<style>
+.queue-section {
+  margin-bottom: 30px;
+}
+
+.removal-options {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.removal-options .form-group {
+  margin-bottom: 15px;
+}
+
+.removal-options label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.removal-options input[type="text"] {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.info-box {
+  background: #e7f3ff;
+  border-left: 4px solid #2196F3;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin: 15px 0;
+}
+
+.info-box strong {
+  color: #1976D2;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-danger {
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #1976D2;
+}
+
+.btn-danger:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+
+.dolly-checkbox {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+}
+
+#masterCheckbox {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+}
+
+.archive-checkbox {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+}
+
+#archiveMasterCheckbox {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+}
+
+.empty {
+  text-align: center;
+  color: #999;
+  padding: 40px 20px;
+  font-style: italic;
+}
+
+/* Pagination Styles */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.page-link {
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-decoration: none;
+  color: #333;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.page-link:hover {
+  background: #2196F3;
+  color: white;
+  border-color: #2196F3;
+}
+
+.page-link.disabled {
+  background: #e9ecef;
+  color: #999;
+  cursor: not-allowed;
+  border-color: #ddd;
+}
+
+.page-info {
+  padding: 8px 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Filter Section Styles */
+.filter-section {
+  background: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #e0e0e0;
+}
+
+.filter-form {
+  margin: 0;
+}
+
+.filter-group {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  min-width: 200px;
+  flex: 1;
+}
+
+.filter-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-primary:hover {
+  background-color: #1976D2;
+}
+
+/* Badge Styles */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.badge-info {
+  background-color: #e3f2fd;
+  color: #1976D2;
+  border: 1px solid #90caf9;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('removeForm');
+  const masterCheckbox = document.getElementById('masterCheckbox');
+  const dollyCheckboxes = document.querySelectorAll('.dolly-checkbox');
+  const removeBtn = document.getElementById('removeBtn');
+  const selectedCountSpan = document.getElementById('selectedCount');
+  const selectAllBtn = document.getElementById('selectAllBtn');
+  const deselectAllBtn = document.getElementById('deselectAllBtn');
+  
+  // Update selected count
+  function updateSelectedCount() {
+    const selectedCount = document.querySelectorAll('.dolly-checkbox:checked').length;
+    selectedCountSpan.textContent = selectedCount;
+    removeBtn.disabled = selectedCount === 0;
+  }
+  
+  // Master checkbox
+  masterCheckbox.addEventListener('change', function() {
+    dollyCheckboxes.forEach(cb => cb.checked = this.checked);
+    updateSelectedCount();
+  });
+  
+  // Individual checkboxes
+  dollyCheckboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      updateSelectedCount();
+      
+      // Update master checkbox
+      const allChecked = Array.from(dollyCheckboxes).every(c => c.checked);
+      const someChecked = Array.from(dollyCheckboxes).some(c => c.checked);
+      masterCheckbox.checked = allChecked;
+      masterCheckbox.indeterminate = someChecked && !allChecked;
+    });
+  });
+  
+  // Select all button
+  selectAllBtn.addEventListener('click', function() {
+    dollyCheckboxes.forEach(cb => cb.checked = true);
+    masterCheckbox.checked = true;
+    updateSelectedCount();
+  });
+  
+  // Deselect all button
+  deselectAllBtn.addEventListener('click', function() {
+    dollyCheckboxes.forEach(cb => cb.checked = false);
+    masterCheckbox.checked = false;
+    updateSelectedCount();
+  });
+  
+  // Form validation
+  form.addEventListener('submit', function(e) {
+    const selectedCount = document.querySelectorAll('.dolly-checkbox:checked').length;
+    
+    if (selectedCount === 0) {
+      e.preventDefault();
+      alert('Lütfen en az bir dolly seçin.');
+      return false;
+    }
+    
+    const confirmMsg = `${selectedCount} dolly'yi sıradan kaldırıp SÜRESIZ olarak arşivlemek istediğinize emin misiniz?`;
+    if (!confirm(confirmMsg)) {
+      e.preventDefault();
+      return false;
+    }
+  });
+  
+  // Initial count
+  updateSelectedCount();
+
+  // --- Archive bulk restore ---
+  const archiveMasterCheckbox = document.getElementById('archiveMasterCheckbox');
+  const archiveCheckboxes = document.querySelectorAll('.archive-checkbox');
+  const archiveSelectedCountSpan = document.getElementById('archiveSelectedCount');
+  const restoreBulkBtn = document.getElementById('restoreBulkBtn');
+
+  function updateArchiveSelectedCount() {
+    const selected = document.querySelectorAll('.archive-checkbox:checked').length;
+    archiveSelectedCountSpan.textContent = selected;
+    restoreBulkBtn.disabled = selected === 0;
+  }
+
+  if (archiveMasterCheckbox && archiveCheckboxes.length) {
+    archiveMasterCheckbox.addEventListener('change', function() {
+      archiveCheckboxes.forEach(cb => cb.checked = this.checked);
+      updateArchiveSelectedCount();
+    });
+
+    archiveCheckboxes.forEach(cb => {
+      cb.addEventListener('change', function() {
+        const allChecked = Array.from(archiveCheckboxes).every(c => c.checked);
+        const someChecked = Array.from(archiveCheckboxes).some(c => c.checked);
+        archiveMasterCheckbox.checked = allChecked;
+        archiveMasterCheckbox.indeterminate = someChecked && !allChecked;
+        updateArchiveSelectedCount();
+      });
+    });
+
+    updateArchiveSelectedCount();
+  }
+});
+</script>
+
+{% endblock %}

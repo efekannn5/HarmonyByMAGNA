@@ -1,0 +1,53 @@
+app:
+  name: HarmonyEcoSystem
+  secret_key: "CHANGE_ME_SECRET"
+  environment: development
+  api_prefix: "/api"
+  host: "0.0.0.0"
+  port: 8181
+
+database:
+  dialect: mssql+pyodbc
+  username: "sua_appowneruser1"
+  password: "Magna2026!!"
+  host: "10.19.236.39"
+  port: 1433
+  database: "ControlTower"
+  driver: "ODBC Driver 18 for SQL Server"
+  options:
+    Encrypt: "yes"
+    TrustServerCertificate: "yes"
+  echo: false
+
+logging:
+  level: INFO
+  file: logs/app.log
+  rotation: 10485760
+
+features:
+  enable_mock_data: false
+
+ceva:
+  # CEVA DT Supplier Web Service Configuration
+  enabled: true
+  environment: "uat"  # uat or production
+
+  # test urlsi: https://trtmsuat.cevalogistics.com/Ceva.DT.Supplier.WebService/DTSupplierService.asmx
+  # canlı urlsi: https://trweb04.cevalogistics.com/Ceva.DT.Supplier.WebService/DTSupplierService.asmx
+  
+  uat:
+    url: "https://trweb04.cevalogistics.com/Ceva.DT.Supplier.WebService/DTSupplierService.asmx"
+    username: "GHZNA"
+    password: "Tb3e1fr-"
+    supplier_code: "GHZNA"  # FORD GSDB tedarikçi kodu
+    user_id: "0"  # UserId (default: 0)
+  
+  production:
+    url: ""  # Production URL buraya eklenecek
+    username: ""  # Production username buraya eklenecek
+    password: ""  # Production password buraya eklenecek
+    supplier_code: "MAGNA_GSDB_CODE"  # FORD GSDB tedarikçi kodu
+    user_id: "0"  # UserId (default: 0)
+  
+  timeout: 30  # seconds
+  retry_count: 2

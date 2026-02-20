@@ -1,0 +1,1559 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+<div class="task-detail-header">
+    <div class="header-content">
+        <div class="task-title">
+            <h1>{{ task.part_number }}</h1>
+            <span class="task-status status-{{ task.status }}">{{ task.status.title().replace('_', ' ') }}</span>
+        </div>
+        <div class="task-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {{ task.progress_percentage }}%"></div>
+            </div>
+            <span class="progress-text">{{ task.processed_items }}/{{ task.total_items }} Dolly ({{ task.progress_percentage }}%)</span>
+        </div>
+    </div>
+    {% if not embed %}
+    <div class="header-actions">
+        <a href="{{ url_for('dashboard.dashboard_home') }}" class="btn btn-secondary">Geri Dön</a>
+    </div>
+    {% endif %}
+</div>
+
+{% if message %}
+<div class="alert alert-success">{{ message }}</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="task-content">
+    <!-- Task Info Panel -->
+    {% if not embed %}
+    <div class="task-info-panel">
+        <div class="card">
+            <div class="card-header">
+                <h3>Görev Bilgileri</h3>
+            </div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Oluşturulma:</span>
+                    <span class="info-value">{{ task.created_at|local_dt }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Son Güncelleme:</span>
+                    <span class="info-value">{{ task.updated_at|local_dt }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Etiket Türü:</span>
+                    <span class="info-value shipping-tag tag-{{ task.group_tag }}">
+                        {% if task.group_tag == "asn" %}ASN{% elif task.group_tag == "irsaliye" %}İrsaliye{% else %}ASN + İrsaliye{% endif %}
+                    </span>
+                </div>
+                {% if task.assigned_user_name %}
+                <div class="info-item">
+                    <span class="info-label">Atanan:</span>
+                    <span class="info-value">{{ task.assigned_user_name }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+    {% endif %}
+
+    <!-- Dolly Management Panel -->
+    <div class="dolly-management-panel">
+        {% set active_entries = task.hold_entries | selectattr('status', 'ne', 'removed') | list %}
+        <!-- Excel Style Dolly List -->
+        <div class="excel-section-header">
+            <div>
+                <p class="section-eyebrow">Harmony Magna</p>
+                <h2>Dolly Listesi</h2>
+            </div>
+            <div class="section-actions">
+                <span class="item-count">{{ active_entries|length }} Kayıt</span>
+            </div>
+        </div>
+        <div class="card excel-card">
+            <div class="card-header excel-card-header">
+                <p>Excel görünümünde kayıt takibi</p>
+            </div>
+
+            {% if dolly_list %}
+            <div class="excel-table-wrapper" id="excelTableWrapper">
+                <table class="excel-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Dolly No</th>
+                            <th>Adet</th>
+                            <th>Durum</th>
+                            <th>İstasyon</th>
+                            <th>Müşteri No</th>
+                            <th>Detay</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dolly in dolly_list %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ dolly.dolly_no }}</strong></td>
+                            <td>
+                                <span class="badge badge-primary">{{ dolly.vin_count }} VIN</span>
+                            </td>
+                            <td>
+                                <span class="table-status status-{{ dolly.status }}">
+                                    {{ dolly.status.replace('_',' ').title() }}
+                                </span>
+                            </td>
+                            <td>{{ dolly.eol_name or '-' }}</td>
+                            <td>{{ dolly.customer_referans or '-' }}</td>
+                            <td>
+                                <button type="button" class="vin-toggle" onclick="toggleVinBreakdown(this, {{ loop.index }})">
+                                    👁️ VIN'leri Göster
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="vin-breakdown-row" id="vinBreakdown{{ loop.index }}" style="display: none;">
+                            <td colspan="7">
+                                <div class="vin-breakdown-container">
+                                    <h4>{{ dolly.dolly_no }} - VIN Kırılımı ({{ dolly.vin_count }} adet)</h4>
+                                    <table class="vin-breakdown-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Sıra</th>
+                                                <th>VIN No</th>
+                                                <th>Durum</th>
+                                                <th>Terminal</th>
+                                                <th>EOL</th>
+                                                <th>Customer</th>
+                                                <th>Adet</th>
+                                                <th>Tarih</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for vin_entry in dolly.vin_entries %}
+                                            <tr>
+                                                <td>{{ loop.index }}</td>
+                                                <td><code>{{ vin_entry.vin_no }}</code></td>
+                                                <td>
+                                                    <span class="table-status status-{{ vin_entry.status }}">
+                                                        {{ vin_entry.status.replace('_',' ').title() }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ vin_entry.terminal_user or '-' }}</td>
+                                                <td>{{ vin_entry.eol_name or '-' }}</td>
+                                                <td>{{ vin_entry.customer_referans or '-' }}</td>
+                                                <td>{{ vin_entry.adet or '1' }}</td>
+                                                <td>
+                                                    {% if vin_entry.submitted_at %}
+                                                    {{ vin_entry.submitted_at|local_dt }}
+                                                    {% else %}
+                                                    -
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-vin-list">
+                <p>Henüz dolly eklenmemiş.</p>
+            </div>
+            {% endif %}
+
+            {% if task.status != "completed" %}
+            <div class="inline-input-grid inline-under-table">
+                <div class="form-group">
+                    <label for="sefer_no_input">Sefer No</label>
+                    <input type="text" id="sefer_no_input" placeholder="S123456">
+                </div>
+                <div class="form-group">
+                    <label for="plaka_no_input">Plaka No</label>
+                    <input type="text" id="plaka_no_input" placeholder="34 M 431"
+                           pattern="^[0-9]{2}\\s?[A-Za-z]{1,3}\\s?[0-9]{1,4}$"
+                           title="Plaka formatı: 2 rakam + 1-3 harf + 1-4 rakam (ör. 34 MAG 0001, 41 M 431)">
+                </div>
+                <div class="form-group">
+                    <label for="trip_reason_code_input">Hata Kodu</label>
+                    <select id="trip_reason_code_input" class="trip-reason-select">
+                        <option value="TRC-00" selected>👌 TRC-00: Problemsiz Sefer</option>
+                        <option value="TRC-01">⚠️ TRC-01: Mezanin Eksikliği</option>
+                        <option value="TRC-02">🚚 TRC-02: Araç Gecikme si</option>
+                        <option value="TRC-03">📦 TRC-03: Dolly Eksikliği</option>
+                        <option value="TRC-04">🏭 TRC-04: Tedrikçi Üretim Kaybı</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="lokasyon_input">Lokasyon</label>
+                    <input type="text" id="lokasyon_input" value="GHZNA">
+                </div>
+            </div>
+
+            <div class="table-actions">
+                <div class="action-button-group">
+                    <button type="button" 
+                            class="btn btn-success" 
+                            id="btnSendASN" 
+                            onclick="sendASNToCEVA()"
+                            {% if not task.can_submit_asn %}disabled title="Bu grupta ASN yok"{% endif %}>
+                        ✅ ASN Gönder (CEVA)
+                    </button>
+                    <button type="button" 
+                            class="btn btn-warning" 
+                            id="btnSendIrsaliye" 
+                            onclick="sendIrsaliyeToCEVA()"
+                            {% if not task.can_submit_irsaliye %}disabled title="Bu grupta İrsaliye yok"{% endif %}>
+                        📋 İrsaliye Gönder (CEVA)
+                    </button>
+                    <a href="{{ url_for('dashboard.operator_task_export', part_number=task.part_number) }}" class="btn btn-outline excel-btn">
+                        Excel İndir
+                    </a>
+                    <button type="button" class="btn btn-secondary edit-toggle" id="editToggle">
+                        Düzenle
+                    </button>
+                </div>
+            </div>
+
+            <div class="edit-toolbar" id="editToolbar">
+                <button type="button" class="icon-btn" data-action="open-quick-add" title="Yeni Dolly Ekle">+</button>
+                <button type="button" class="icon-btn danger" data-action="open-edit-remove" title="EOL son dolly'i çıkar">−</button>
+                <button type="button" class="icon-btn" data-action="toggle-edit" title="Tabloyu Düzenle">✎</button>
+            </div>
+            {% endif %}
+</div>
+</div>
+</div>
+
+{% if task.status != "completed" %}
+<div class="quick-add-modal" id="quickAddModal">
+    <div class="quick-add-content">
+        <div class="quick-add-header">
+            <div>
+                <p class="section-eyebrow">Hızlı Ekle</p>
+                <h3>Sıradaki Dollyleri Ekle</h3>
+            </div>
+            <button type="button" class="quick-add-close" id="quickAddClose" aria-label="Kapat">×</button>
+        </div>
+        <div class="quick-add-body">
+            <div class="quick-add-column">
+                <h4>Sıradaki Dollyler</h4>
+                {% if next_dollys %}
+                <div class="next-dollys-list compact">
+                    {% for dolly in next_dollys %}
+                    <div class="next-dolly-item">
+                        <div class="dolly-summary">
+                            <div class="dolly-number">{{ dolly.DollyNo }}</div>
+                            <div class="dolly-vin">{{ dolly.VinNo }}</div>
+                            <div class="dolly-details">
+                                <span class="eol-name">{{ dolly.EOLName or 'N/A' }}</span>
+                                <span class="customer-ref">{{ dolly.CustomerReferans or 'N/A' }}</span>
+                            </div>
+                        </div>
+                        <div class="dolly-actions">
+                            <button type="button" class="btn btn-primary btn-sm add-next-dolly" 
+                                    data-dolly="{{ dolly.DollyNo }}" data-vin="{{ dolly.VinNo }}">
+                                <span class="btn-icon">➕</span>
+                                Ekle
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-dollys">
+                    <p>Sırada bekleyen dolly yok.</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="quick-add-column">
+                <h4>Manuel Dolly Ekle</h4>
+                <form method="post" action="{{ url_for('dashboard.operator_add_dolly', part_number=task.part_number) }}" class="add-dolly-form" id="manualAddForm">
+                    <input type="hidden" name="sefer_no" id="modal_sefer_no">
+                    <input type="hidden" name="plaka_no" id="modal_plaka_no">
+                    <input type="hidden" name="lokasyon" id="modal_lokasyon">
+                    <div class="form-group">
+                        <label for="dolly_no">Dolly No</label>
+                        <input type="text" id="dolly_no" name="dolly_no" required placeholder="DL-1001">
+                    </div>
+                    <div class="form-group">
+                        <label for="vin_no">VIN No</label>
+                        <input type="text" id="vin_no" name="vin_no" required placeholder="3FA6P0LU6FR100001">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <span class="btn-icon">➕</span>
+                        Ekle
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Inline Edit Drawer -->
+<div class="edit-drawer" id="editDrawer">
+  <div class="edit-drawer-content">
+    <div class="drawer-header">
+      <h3>Dolly Düzenle</h3>
+      <button type="button" class="drawer-close" data-action="close-drawer">×</button>
+    </div>
+    <div class="drawer-body">
+      <div class="drawer-column">
+        <h4>Manuel Dolly Ekle</h4>
+        <div class="form-grid">
+          <label>Dolly No<input type="text" id="edit_dolly_no"></label>
+          <label>VIN<input type="text" id="edit_vin_no"></label>
+          <label>Dolly Order<input type="text" id="edit_dolly_order"></label>
+          <label>Adet<input type="number" id="edit_adet" value="1" min="1"></label>
+          <label>EOL<input type="text" id="edit_eol_name" value="{{ task.eol_name }}"></label>
+          <label>EOL ID<input type="text" id="edit_eol_id"></label>
+          <label>Müşteri Ref<input type="text" id="edit_customer_ref"></label>
+          <label>Terminal Tarih<input type="datetime-local" id="edit_terminal_dt"></label>
+          <label>EOL Tarih<input type="datetime-local" id="edit_eol_dt"></label>
+          <label>Sefer No<input type="text" id="edit_sefer_no" value="{{ request.args.get('sefer_no','') }}"></label>
+          <label>Plaka<input type="text" id="edit_plaka_no" value="{{ request.args.get('plaka_no','') }}"></label>
+          <label>Lokasyon<input type="text" id="edit_lokasyon" value="GHZNA"></label>
+        </div>
+        <button class="btn btn-primary btn-block" id="btnEditAdd">➕ Dolly Ekle</button>
+      </div>
+      <div class="drawer-column">
+        <h4>Son Dolly'i Çıkar (EOL bazlı)</h4>
+        <label>EOL Seç</label>
+        <select id="remove_eol_name">
+          {% for dolly in dolly_list %}
+            {% set eoln = dolly.eol_name or 'UNKNOWN' %}
+            <option value="{{ eoln }}">{{ eoln }}</option>
+          {% endfor %}
+        </select>
+        <label>Çıkarılacak Dolly No</label>
+        <input type="text" id="remove_dolly_no" placeholder="Son dolly no">
+        <button class="btn btn-danger btn-block" id="btnEditRemove">− Dolly Çıkar</button>
+        <p class="muted">Not: Sadece seçilen EOL içindeki en son eklenen dolly çıkarılabilir.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<style>
+.task-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+}
+
+.header-content {
+    flex: 1;
+}
+
+.task-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.task-title h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.task-progress {
+    max-width: 300px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #10b981;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+.task-status {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.task-content {
+    display: grid;
+    {% if embed %}
+    grid-template-columns: 1fr;
+    {% else %}
+    grid-template-columns: 300px 1fr;
+    {% endif %}
+    gap: 1.5rem;
+}
+
+.task-info-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.info-grid {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #6b7280;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.info-value {
+    color: #1f2933;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.shipping-tag {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.tag-asn { background-color: #ecfccb; color: #365314; }
+.tag-irsaliye { background-color: #fecaca; color: #991b1b; }
+.tag-both { background-color: #e0e7ff; color: #3730a3; }
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.btn-submit {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    font-weight: 600;
+    text-align: left;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-icon {
+    font-size: 1.2rem;
+}
+
+.add-dolly-form {
+    padding: 1rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 1rem;
+    align-items: end;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Excel style table */
+.excel-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 1rem;
+}
+
+.section-eyebrow {
+    margin: 0;
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.excel-section-header h2 {
+    margin: 0.2rem 0 0;
+}
+
+.section-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.excel-card-header p {
+    margin: 0.2rem 0 0;
+    color: #6b7280;
+}
+
+.inline-input-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+    align-items: end;
+}
+
+.inline-under-table {
+    margin: 1rem 0 0.5rem;
+}
+
+.inline-input-grid .form-group {
+    margin-bottom: 0;
+}
+
+.inline-input-grid input {
+    background: rgba(15, 23, 42, 0.02);
+}
+
+.excel-table-wrapper {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow-x: auto;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.excel-table-wrapper.is-editable {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.excel-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    min-width: 900px;
+}
+
+.excel-table th,
+.excel-table td {
+    padding: 0.6rem 0.85rem;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+.excel-table th {
+    background: #f8fafc;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+    font-weight: 600;
+}
+
+.excel-table tbody tr:nth-child(even) {
+    background: #fdfdfd;
+}
+
+.excel-table tbody tr:hover {
+    background: #eff6ff;
+}
+
+.vin-toggle {
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    background: rgba(59, 130, 246, 0.08);
+    color: #1d4ed8;
+    border-radius: 999px;
+    padding: 0.25rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.vin-toggle:hover {
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.vin-breakdown-row {
+    background: #f8fafc !important;
+}
+
+.vin-breakdown-container {
+    padding: 1.5rem;
+    background: white;
+    border-radius: 8px;
+    margin: 0.5rem;
+    box-shadow: inset 0 0 0 1px #e5e7eb;
+}
+
+.vin-breakdown-container h4 {
+    margin: 0 0 1rem 0;
+    color: #1f2937;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.vin-breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.vin-breakdown-table th {
+    background: #f1f5f9;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    font-size: 0.7rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.vin-breakdown-table td {
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.vin-breakdown-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.vin-breakdown-table code {
+    background: #f1f5f9;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    color: #1e40af;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.35rem 0.85rem;
+    border-radius: 16px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.badge-primary {
+    background: rgba(59, 130, 246, 0.12);
+    color: #1d4ed8;
+}
+
+.table-status {
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+}
+
+.table-status.status-scan_captured {
+    background: rgba(245, 158, 11, 0.15);
+    color: #b45309;
+}
+
+.table-status.status-waiting_operator,
+.table-status.status-waiting_submit {
+    background: rgba(59, 130, 246, 0.15);
+    color: #1d4ed8;
+}
+
+.table-status.status-completed {
+    background: rgba(16, 185, 129, 0.15);
+    color: #047857;
+}
+
+.table-actions {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.action-button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.action-button-group form {
+    display: inline;
+}
+
+.action-button-group .btn {
+    min-width: 150px;
+    border-radius: 999px;
+    padding: 0.65rem 1.6rem;
+    font-weight: 600;
+    font-size: 0.92rem;
+    box-shadow: 0 6px 12px rgba(15, 23, 42, 0.12);
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.btn-outline,
+.btn-secondary {
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    color: #1f293b;
+}
+
+.btn-outline:hover,
+.btn-secondary:hover {
+    background: rgba(59, 130, 246, 0.08);
+    color: #1d4ed8;
+}
+
+.action-button-group .btn-success {
+    background: linear-gradient(120deg, #059669, #10b981);
+    border: none;
+    color: #fff;
+}
+
+.action-button-group .btn-warning {
+    background: linear-gradient(120deg, #f97316, #f59e0b);
+    border: none;
+    color: #fff;
+}
+
+.action-button-group .btn-success:hover,
+.action-button-group .btn-warning:hover {
+    filter: brightness(1.05);
+}
+
+.edit-toolbar {
+    display: none;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.edit-toolbar.is-visible {
+    display: inline-flex;
+}
+
+.icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.icon-btn:hover {
+    background: #f8fafc;
+    transform: translateY(-1px);
+}
+
+.icon-btn.danger {
+    border-color: rgba(220, 38, 38, 0.4);
+    color: #dc2626;
+}
+
+.quick-add-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 7, 18, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    z-index: 100;
+}
+
+.quick-add-modal.is-visible {
+    display: flex;
+}
+
+.quick-add-content {
+    background: #fff;
+    border-radius: 20px;
+    width: min(960px, 100%);
+    box-shadow: 0 30px 60px rgba(15, 23, 42, 0.25);
+    padding: 2rem;
+}
+
+.quick-add-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.quick-add-header h3 {
+    margin: 0.2rem 0 0;
+}
+
+.quick-add-close {
+    border: none;
+    background: rgba(15, 23, 42, 0.05);
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    font-size: 1.4rem;
+    cursor: pointer;
+}
+
+.quick-add-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+}
+
+.quick-add-column {
+    background: rgba(15, 23, 42, 0.015);
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    border-radius: 16px;
+    padding: 1.25rem;
+}
+
+.quick-add-column h4 {
+    margin: 0 0 1rem;
+}
+
+.next-dollys-list.compact {
+    max-height: 320px;
+}
+
+.empty-vin-list {
+    text-align: center;
+    padding: 2rem;
+    color: #6b7280;
+    font-style: italic;
+    border: 1px dashed #d1d5db;
+    border-radius: 12px;
+}
+
+.item-count {
+    background: #f3f4f6;
+    color: #374151;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.next-dollys-list {
+    padding: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.next-dolly-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    border: 1px solid #e5e8f0;
+    border-radius: 6px;
+    background: #fafbfc;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.next-dolly-item:hover {
+    background: #f0f9ff;
+    border-color: #3b82f6;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.dolly-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.dolly-number {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #1f2937;
+}
+
+.dolly-vin {
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.dolly-details {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.dolly-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.add-next-dolly {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    border-radius: 6px;
+    background: #3b82f6;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.add-next-dolly:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.empty-dollys {
+    text-align: center;
+    padding: 2rem;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.alert-success {
+    background-color: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.alert-error {
+    background-color: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+/* Edit drawer */
+.edit-drawer {
+    position: fixed;
+    right: -420px;
+    top: 0;
+    width: 400px;
+    height: 100%;
+    background: #fff;
+    box-shadow: -4px 0 16px rgba(0,0,0,0.1);
+    transition: right 0.3s ease;
+    z-index: 1200;
+}
+.edit-drawer.is-open { right: 0; }
+.edit-drawer-content { height: 100%; display: flex; flex-direction: column; padding: 16px; }
+.drawer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.drawer-body { display: grid; grid-template-columns: 1fr; gap: 16px; overflow-y: auto; }
+.drawer-column { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; background: #fafafa; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-grid label { display: flex; flex-direction: column; font-size: 12px; color: #4b5563; }
+.form-grid input, .drawer-column select { padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+.drawer-close { background: none; border: none; font-size: 20px; cursor: pointer; }
+.muted { font-size: 12px; color: #6b7280; margin-top: 8px; }
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .task-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .task-detail-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .vin-breakdown-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    }
+}
+</style>
+
+<script>
+function isValidPlaka(value) {
+    return /^[0-9]{2}\s?[A-Za-z]{1,3}\s?[0-9]{1,4}$/.test(value || '');
+}
+
+function isValidRegionCode(value) {
+    return /^[0-9]{2}\b/.test(value || '');
+}
+
+// Auto-focus first input
+document.addEventListener('DOMContentLoaded', function() {
+    const seferInput = document.getElementById('sefer_no_input');
+    const plakaInput = document.getElementById('plaka_no_input');
+    const lokasyonInput = document.getElementById('lokasyon_input');
+    const modalSefer = document.getElementById('modal_sefer_no');
+    const modalPlaka = document.getElementById('modal_plaka_no');
+    const modalLokasyon = document.getElementById('modal_lokasyon');
+
+    // Add event listeners for next dolly buttons
+    document.querySelectorAll('.add-next-dolly').forEach(button => {
+        button.addEventListener('click', function() {
+            const dollyNo = this.dataset.dolly;
+            const vinNo = this.dataset.vin;
+            
+            if (confirm(`${dollyNo} dollyini görev listesine eklemek istediğinizden emin misiniz?`)) {
+                addNextDolly(dollyNo, vinNo);
+            }
+        });
+    });
+
+    const manualForm = document.getElementById('manualAddForm');
+    manualForm?.addEventListener('submit', (event) => {
+        const seferValue = seferInput?.value.trim();
+        const plakaValue = plakaInput?.value.trim();
+        const lokasyonValue = lokasyonInput?.value.trim() || 'GHZNA';
+
+        if (!seferValue || !plakaValue) {
+            event.preventDefault();
+            alert('Lütfen sefer numarası ve plaka bilgilerini girin.');
+            return;
+        }
+        if (!isValidPlaka(plakaValue)) {
+            event.preventDefault();
+            if (!isValidRegionCode(plakaValue)) {
+                alert('Bölge kodu 2 rakam olmalıdır. Örnek: 34 MAG 0001');
+            } else {
+                alert('Plaka formatı hatalı. Örnek: 34 MAG 0001 veya 41 M 431');
+            }
+            plakaInput?.focus();
+            return;
+        }
+
+        if (modalSefer) modalSefer.value = seferValue;
+        if (modalPlaka) modalPlaka.value = plakaValue;
+        if (modalLokasyon) modalLokasyon.value = lokasyonValue;
+    });
+
+    const dollyInput = document.getElementById('dolly_no');
+    const vinInput = document.getElementById('vin_no');
+    if (dollyInput && vinInput) {
+        dollyInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                vinInput.focus();
+            }
+        });
+        vinInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const submitBtn = manualForm?.querySelector('button[type="submit"]');
+                submitBtn?.click();
+            }
+        });
+    }
+
+    const editToggle = document.getElementById('editToggle');
+    const editToolbar = document.getElementById('editToolbar');
+    const tableWrapper = document.getElementById('excelTableWrapper');
+    const quickAddBtn = document.querySelector('[data-action="open-quick-add"]');
+    const toggleEditBtn = document.querySelector('[data-action="toggle-edit"]');
+    const openRemoveBtn = document.querySelector('[data-action="open-edit-remove"]');
+    const quickAddModal = document.getElementById('quickAddModal');
+    const quickAddClose = document.getElementById('quickAddClose');
+    const editDrawer = document.getElementById('editDrawer');
+    const drawerClose = document.querySelector('[data-action="close-drawer"]');
+    const btnEditAdd = document.getElementById('btnEditAdd');
+    const btnEditRemove = document.getElementById('btnEditRemove');
+
+    editToggle?.addEventListener('click', () => {
+        editToolbar?.classList.toggle('is-visible');
+    });
+
+    const openQuickAdd = () => {
+        if (!quickAddModal) return;
+        if (modalSefer) modalSefer.value = seferInput?.value.trim() || '';
+        if (modalPlaka) modalPlaka.value = plakaInput?.value.trim() || '';
+        if (modalLokasyon) modalLokasyon.value = lokasyonInput?.value.trim() || 'GHZNA';
+        quickAddModal.classList.add('is-visible');
+        document.getElementById('dolly_no')?.focus();
+    };
+
+    const closeQuickAdd = () => {
+        quickAddModal?.classList.remove('is-visible');
+    };
+
+    quickAddBtn?.addEventListener('click', openQuickAdd);
+    quickAddClose?.addEventListener('click', closeQuickAdd);
+    quickAddModal?.addEventListener('click', (event) => {
+        if (event.target === quickAddModal) {
+            closeQuickAdd();
+        }
+    });
+
+    toggleEditBtn?.addEventListener('click', () => {
+        tableWrapper?.classList.toggle('is-editable');
+    });
+
+    const openDrawer = () => editDrawer?.classList.add('is-open');
+    const closeDrawer = () => editDrawer?.classList.remove('is-open');
+    openRemoveBtn?.addEventListener('click', openDrawer);
+    drawerClose?.addEventListener('click', closeDrawer);
+
+    // Manual add via drawer
+    btnEditAdd?.addEventListener('click', () => {
+        const body = {
+            dolly_no: document.getElementById('edit_dolly_no')?.value.trim(),
+            vin_no: document.getElementById('edit_vin_no')?.value.trim(),
+            dolly_order_no: document.getElementById('edit_dolly_order')?.value.trim(),
+            adet: document.getElementById('edit_adet')?.value || 1,
+            eol_name: document.getElementById('edit_eol_name')?.value.trim(),
+            eol_id: document.getElementById('edit_eol_id')?.value.trim(),
+            customer_ref: document.getElementById('edit_customer_ref')?.value.trim(),
+            terminal_dt: document.getElementById('edit_terminal_dt')?.value,
+            eol_dt: document.getElementById('edit_eol_dt')?.value,
+            sefer_no: document.getElementById('edit_sefer_no')?.value.trim(),
+            plaka_no: document.getElementById('edit_plaka_no')?.value.trim(),
+            lokasyon: document.getElementById('edit_lokasyon')?.value.trim() || 'GHZNA',
+        };
+        if (!body.dolly_no || !body.vin_no || !body.eol_name || !body.terminal_dt || !body.eol_dt) {
+            alert('Dolly, VIN, EOL, Terminal ve EOL tarihi zorunlu.');
+            return;
+        }
+        fetch(`/operator/task/{{ task.part_number }}/edit/add`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        }).then(r => r.json()).then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Eklenemedi');
+        }).catch(err => {
+            console.error(err);
+            alert('Eklenemedi');
+        });
+    });
+
+    // Remove last within EOL
+    btnEditRemove?.addEventListener('click', () => {
+        const eol = document.getElementById('remove_eol_name')?.value.trim();
+        const dolly = document.getElementById('remove_dolly_no')?.value.trim();
+        if (!eol || !dolly) {
+            alert('EOL ve dolly no giriniz');
+            return;
+        }
+        fetch(`/operator/task/{{ task.part_number }}/edit/remove`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({eol_name: eol, dolly_no: dolly})
+        }).then(r => r.json()).then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Çıkarılamadı');
+        }).catch(err => {
+            console.error(err);
+            alert('Çıkarılamadı');
+        });
+    });
+});
+
+// Function to add next available dolly
+function addNextDolly(dollyNo, vinNo) {
+    const partNumber = '{{ task.part_number }}';
+    const seferInput = document.getElementById('sefer_no_input');
+    const plakaInput = document.getElementById('plaka_no_input');
+    const lokasyonInput = document.getElementById('lokasyon_input');
+    const seferValue = seferInput?.value.trim();
+    const plakaValue = plakaInput?.value.trim();
+    const lokasyonValue = (lokasyonInput?.value.trim() || 'GHZNA');
+
+    if (!seferValue || !plakaValue) {
+        alert('Lütfen sefer numarası ve plaka bilgisini girin.');
+        return;
+    }
+    if (!isValidPlaka(plakaValue)) {
+        if (!isValidRegionCode(plakaValue)) {
+            alert('Bölge kodu 2 rakam olmalıdır. Örnek: 34 MAG 0001');
+        } else {
+            alert('Plaka formatı hatalı. Örnek: 34 MAG 0001 veya 41 M 431');
+        }
+        plakaInput?.focus();
+        return;
+    }
+
+    // Disable the button to prevent double-click
+    const button = document.querySelector(`[data-dolly="${dollyNo}"]`);
+    button.disabled = true;
+    button.innerHTML = '<span class="btn-icon">⏳</span> Ekleniyor...';
+    
+    fetch(`/operator/task/${partNumber}/add-next-dolly/${dollyNo}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            sefer_no: seferValue,
+            plaka_no: plakaValue,
+            lokasyon: lokasyonValue
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reload the page to update the lists
+            location.reload();
+        } else {
+            alert(data.message || 'Dolly eklenirken hata oluştu');
+            // Re-enable the button
+            button.disabled = false;
+            button.innerHTML = '<span class="btn-icon">➕</span> Ekle';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Dolly eklenirken hata oluştu');
+        // Re-enable the button
+        button.disabled = false;
+        button.innerHTML = '<span class="btn-icon">➕</span> Ekle';
+    });
+}
+
+function toggleVinBreakdown(button, dollyIndex) {
+    const breakdownRow = document.getElementById('vinBreakdown' + dollyIndex);
+    
+    if (breakdownRow.style.display === 'none') {
+        breakdownRow.style.display = 'table-row';
+        button.innerHTML = '👁️‍🗨️ VIN\'leri Gizle';
+        button.style.background = 'rgba(239, 68, 68, 0.08)';
+        button.style.color = '#dc2626';
+        button.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+    } else {
+        breakdownRow.style.display = 'none';
+        button.innerHTML = '👁️ VIN\'leri Göster';
+        button.style.background = 'rgba(59, 130, 246, 0.08)';
+        button.style.color = '#1d4ed8';
+        button.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+    }
+}
+
+// ASN Gönderme Fonksiyonu
+function sendASNToCEVA() {
+    const seferInput = document.getElementById('sefer_no_input');
+    const plakaInput = document.getElementById('plaka_no_input');
+    const tripReasonCodeInput = document.getElementById('trip_reason_code_input');
+    const lokasyonInput = document.getElementById('lokasyon_input');
+    const seferValue = seferInput?.value.trim();
+    const plakaValue = plakaInput?.value.trim();
+    const tripReasonCodeValue = tripReasonCodeInput?.value || 'TRC-00';
+    const lokasyonValue = (lokasyonInput?.value.trim() || 'GHZNA');
+    const submitBtn = document.getElementById('btnSendASN');
+
+    // Validation
+    if (!seferValue) {
+        alert('❌ Sefer numarası zorunludur!');
+        seferInput?.focus();
+        return false;
+    }
+
+    if (!plakaValue) {
+        alert('❌ Plaka numarası zorunludur!');
+        plakaInput?.focus();
+        return false;
+    }
+    if (!isValidPlaka(plakaValue)) {
+        if (!isValidRegionCode(plakaValue)) {
+            alert('Bölge kodu 2 rakam olmalıdır. Örnek: 34 MAG 0001');
+        } else {
+            alert('Plaka formatı hatalı. Örnek: 34 MAG 0001 veya 41 M 431');
+        }
+        plakaInput?.focus();
+        return false;
+    }
+
+    // Get reason code description
+    const reasonDesc = tripReasonCodeInput?.options[tripReasonCodeInput.selectedIndex]?.text || tripReasonCodeValue;
+
+    // Confirm
+    const confirmMsg = `🚚 CEVA ASN Gönderimi\n\nSefer: ${seferValue}\nPlaka: ${plakaValue}\nDurum: ${reasonDesc}\n\n⚠️ Bu işlem CEVA sistemine gönderilecek!\n\nOnaylıyor musunuz?`;
+    if (!confirm(confirmMsg)) {
+        return false;
+    }
+
+    // Show loading overlay
+    showLoadingOverlay('🌐 CEVA ASN gönderiliyor...\n\n⏳ Lütfen bekleyin, işlem tamamlanana kadar ekranı kapatmayın!');
+
+    // Disable button
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '⏳ Gönderiliyor...';
+    }
+
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('sefer_numarasi', seferValue);
+    formData.append('plaka_no', plakaValue);
+    formData.append('trip_reason_code', tripReasonCodeValue);
+    formData.append('lokasyon', lokasyonValue);
+
+    // Send to backend
+    fetch(`/operator/task/{{ task.part_number }}/send-asn`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoadingOverlay();
+
+        if (data.success) {
+            showSuccessModal(
+                '✅ CEVA ASN Başarıyla Gönderildi!',
+                `${data.transferred_count} VIN başarıyla CEVA sistemine gönderildi.\n\nSefer: ${data.sefer_numarasi}\n\n${data.ceva_message || 'İşlem tamamlandı.'}`,
+                () => {
+                    window.location.reload();
+                }
+            );
+        } else {
+            showErrorModal(
+                '❌ CEVA ASN Gönderimi Başarısız',
+                data.error || 'Bilinmeyen hata oluştu',
+                data.ceva_message || ''
+            );
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '✅ ASN Gönder (CEVA)';
+            }
+        }
+    })
+    .catch(error => {
+        hideLoadingOverlay();
+        console.error('ASN send error:', error);
+
+        showErrorModal(
+            '❌ Bağlantı Hatası',
+            'Sunucuya bağlanılamadı. Lütfen tekrar deneyin.',
+            error.message
+        );
+
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '✅ ASN Gönder (CEVA)';
+        }
+    });
+
+    return false;
+}
+
+// Loading overlay
+function showLoadingOverlay(message) {
+    let overlay = document.getElementById('asnLoadingOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'asnLoadingOverlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(8px);
+        `;
+
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: white;
+            padding: 3rem 4rem;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+            max-width: 500px;
+        `;
+
+        content.innerHTML = `
+            <div class="spinner" style="margin: 0 auto 1.5rem; width: 80px; height: 80px; border: 8px solid #e5e7eb; border-top-color: #DA291C; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <div id="loadingMessage" style="font-size: 1.25rem; font-weight: 700; color: #1f2937; white-space: pre-line; line-height: 1.8;"></div>
+        `;
+
+        overlay.appendChild(content);
+        document.body.appendChild(overlay);
+
+        const style = document.createElement('style');
+        style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+        document.head.appendChild(style);
+    }
+
+    document.getElementById('loadingMessage').textContent = message;
+    overlay.style.display = 'flex';
+
+    window.onbeforeunload = function() {
+        return "ASN gönderimi devam ediyor. Sayfayı kapatmak istediğinizden emin misiniz?";
+    };
+}
+
+function hideLoadingOverlay() {
+    const overlay = document.getElementById('asnLoadingOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+    window.onbeforeunload = null;
+}
+
+function showSuccessModal(title, message, onClose) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 99998;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        padding: 3rem;
+        border-radius: 16px;
+        max-width: 550px;
+        text-align: center;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+    `;
+
+    content.innerHTML = `
+        <div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
+        <h3 style="font-size: 1.75rem; font-weight: 800; color: #065f46; margin-bottom: 1.5rem;">${title}</h3>
+        <p style="color: #374151; margin-bottom: 2rem; white-space: pre-line; line-height: 1.8; font-size: 1.1rem;">${message}</p>
+        <button onclick="this.closest('[style*=fixed]').remove(); ${onClose ? '(' + onClose.toString() + ')()' : ''}"
+                style="background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 1rem 2.5rem; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+            Tamam
+        </button>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+}
+
+function showErrorModal(title, message, details) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 99998;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        padding: 3rem;
+        border-radius: 16px;
+        max-width: 550px;
+        text-align: center;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+    `;
+
+    content.innerHTML = `
+        <div style="font-size: 4rem; margin-bottom: 1rem;">❌</div>
+        <h3 style="font-size: 1.75rem; font-weight: 800; color: #dc2626; margin-bottom: 1.5rem;">${title}</h3>
+        <p style="color: #374151; margin-bottom: 1rem; white-space: pre-line; line-height: 1.8; font-size: 1.1rem;">${message}</p>
+        ${details ? `<p style="color: #6b7280; font-size: 0.95rem; margin-bottom: 2rem; padding: 1rem; background: #f9fafb; border-radius: 8px; font-family: monospace;">${details}</p>` : '<div style="margin-bottom: 2rem;"></div>'}
+        <button onclick="this.closest('[style*=fixed]').remove()"
+                style="background: linear-gradient(135deg, #dc2626, #ef4444); color: white; padding: 1rem 2.5rem; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">
+            Kapat
+        </button>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+}
+
+</script>
+
+{% endblock %}

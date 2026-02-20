@@ -1,0 +1,27 @@
+[Unit]
+Description=HarmonyEcoSystem Analytics Dashboard (Flask)
+After=network.target
+
+[Service]
+Type=simple
+User=sua_it_ai
+Group=sua_it_ai
+WorkingDirectory=/home/sua_it_ai/controltower/HarmonyEcoSystem
+Environment="PATH=/usr/bin:/usr/local/bin"
+
+# Analytics (8190) için standalone Flask
+ExecStart=/usr/bin/python3 /home/sua_it_ai/controltower/HarmonyEcoSystem/run_analytics.py
+
+Restart=always
+RestartSec=10
+
+# Güvenlik ayarları
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=append:/home/sua_it_ai/controltower/HarmonyEcoSystem/logs/analytics.log
+StandardError=append:/home/sua_it_ai/controltower/HarmonyEcoSystem/logs/analytics_error.log
+
+[Install]
+WantedBy=multi-user.target

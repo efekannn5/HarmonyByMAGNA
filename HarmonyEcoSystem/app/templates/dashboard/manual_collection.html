@@ -1,0 +1,1166 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="manual-collection-container">
+    <!-- Selection Info Panel -->
+    <div id="selectionInfo" class="selection-info">
+        <div>
+            <h3 style="margin: 0 0 5px 0; color: #1f2937; font-size: 0.95rem;">Seçili Dolly'ler</h3>
+            <div class="counts-display">
+                <span style="font-size: 0.9rem;">
+                    Bulunan: <span id="foundCount" style="color: #0c4a6e; font-weight: 600;">0</span> 
+                    / 
+                    ✅ Seçili: <span id="selectedCount" style="color: #0c4a6e; font-weight: 600;">0</span> dolly
+                </span>
+            </div>
+        </div>
+        
+        <div class="submit-actions">
+            <button class="btn btn-secondary" onclick="selectAll()" title="Tüm dolly'leri seç">
+                <span>🔘</span> Tümünü Seç
+            </button>
+            <button class="btn btn-secondary" onclick="deselectAll()" title="Hiçbirini seçme">
+                <span>⭕</span> Temizle
+            </button>
+            <button class="btn btn-secondary" onclick="selectReverse()" title="Seçili olanları çıkar, seçili olmayanları seç">
+                <span>🔀</span> Seçimi Çevir
+            </button>
+            <button id="submitBtn" class="btn btn-success" onclick="submitSelected()" disabled title="Seçili dolly'leri submit et">
+                Submit Et
+            </button>
+        </div>
+    </div>
+
+    <!-- Dollys Container -->
+    <div class="dollys-container" id="dollysContainer">
+        <!-- VIN Filtrele -->
+        <div class="search-controls">
+            <label class="form-label" for="searchInput">
+                <span>VIN veya Dolly Filtrele</span>
+            </label>
+            <input type="text" id="searchInput" class="form-input" 
+                   placeholder="VIN, Dolly No veya müşteri adı ile filtrele..." 
+                   onkeyup="filterDollys()">
+        </div>
+
+        <!-- Dolly Grid (EOL-based grouping) -->
+        <div class="dollys-grid" id="dollysGrid">
+            {% if eol_dollys %}
+                {% set dolly_counter = namespace(value=0) %}
+                {% for eol_group in eol_dollys %}
+                <!-- EOL Group Header -->
+                <div class="eol-group-header">
+                    <h3>🏭 {{ eol_group.EOLName }}</h3>
+                    <span class="eol-stats">{{ eol_group.DollyCount }} Dolly • {{ eol_group.TotalVINs }} VIN</span>
+                </div>
+                
+                {% for dolly in eol_group.Dollys %}
+                {% set dolly_counter.value = dolly_counter.value + 1 %}
+                <div class="dolly-card" id="dolly-{{ dolly_counter.value }}" 
+                     data-dolly-no="{{ dolly.DollyNo }}" 
+                     data-vin-count="{{ dolly.VinCount }}"
+                     data-vins='{{ dolly.Vins|tojson }}'
+                     data-customer="{{ dolly.CustomerReferans or '' }}"
+                     data-eol="{{ dolly.EOLName or '' }}"
+                     data-order="{{ dolly_counter.value }}"
+                     onclick="toggleDollySelection({{ dolly_counter.value }})">
+                    <div class="dolly-card-header">
+                        <div class="selection-indicator">
+                            <span class="check-mark">✓</span>
+                        </div>
+                        <div>
+                            <div class="dolly-number">🚛 {{ dolly.DollyNo }}</div>
+                            <div class="vin-count-badge">{{ dolly.VinCount }} VIN</div>
+                        </div>
+                    </div>
+                    <div class="dolly-card-body">
+                        <div class="detail-row">
+                            <span class="detail-label">🔢 Referans No</span>
+                            <span class="detail-value">{{ dolly.CustomerReferans or '-' }}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">🆔 EOL ID</span>
+                            <span class="detail-value">{{ dolly.EOLID or '-' }}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Adet</span>
+                            <span class="detail-value">{{ dolly.Adet or 1 }}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">📅 Tarih</span>
+                            <span class="detail-value">{{ dolly.EOLDATE.strftime('%d.%m.%Y') if dolly.EOLDATE else '-' }}</span>
+                        </div>
+                        <div class="vin-list-preview">
+                            <div class="vin-preview-hint">Kart üzerinde bekleyerek tüm VINleri görün</div>
+                            <strong>VIN'ler:</strong>
+                            <div class="vin-tags">
+                                {% for vin in dolly.Vins[:3] %}
+                                <span class="vin-tag">{{ vin }}</span>
+                                {% endfor %}
+                                {% if dolly.VinCount > 3 %}
+                                <span class="vin-tag more">+{{ dolly.VinCount - 3 }} daha</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="vin-hover-preview" aria-hidden="true">
+                            <div class="vin-preview-header">VIN Detayı ({{ dolly.VinCount }})</div>
+                            <div class="vin-preview-body">
+                                {% for vin in dolly.Vins %}
+                                <span class="vin-preview-item">{{ vin }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <div style="font-size: 3rem; margin-bottom: 20px;">📦</div>
+                    <h3>Dolly Bulunamadı</h3>
+                    <p>Henüz DollyEOLInfo tablosunda kayıt yok.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.manual-collection-container {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: clamp(0.5rem, 1.5vw, 1.25rem);
+    color: var(--text-base);
+}
+
+.selection-info {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: clamp(0.6rem, 1.2vw, 0.9rem);
+    margin-bottom: 1rem;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-left: 4px solid rgba(66, 152, 181, 0.8);
+    box-shadow: var(--shadow-card);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    position: relative;
+}
+
+.dollys-container {
+    display: block;
+}
+
+.eol-group-header {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    margin: 20px 0 12px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+@media (min-width: 768px) {
+    .eol-group-header {
+        padding: 15px 25px;
+        margin: 25px 0 15px 0;
+    }
+}
+
+.eol-group-header:first-child {
+    margin-top: 0;
+}
+
+.eol-group-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+@media (min-width: 768px) {
+    .eol-group-header h3 {
+        font-size: 1.3rem;
+    }
+}
+
+.eol-stats {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+}
+
+.search-controls {
+    background: var(--bg-card);
+    padding: clamp(1rem, 2vw, 1.5rem);
+    border-radius: var(--radius-lg);
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: var(--shadow-card);
+}
+
+.search-controls .form-input {
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.info-banner {
+    background: rgba(66, 152, 181, 0.08);
+    border-left: 4px solid var(--primary);
+    border-radius: var(--radius-md);
+    padding: clamp(0.85rem, 2vw, 1.25rem) clamp(1rem, 2vw, 1.5rem);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+}
+
+@media (min-width: 768px) {
+    .info-banner {
+        margin-bottom: 1.5rem;
+    }
+}
+
+.info-banner strong {
+    font-size: 0.95rem;
+    color: var(--text-base);
+}
+
+.dollys-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0 0;
+}
+
+@media (min-width: 1024px) {
+    .dollys-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1280px) {
+    .dollys-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1600px) {
+    .dollys-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
+.dolly-card {
+    background: var(--bg-card);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: var(--radius-md);
+    padding: 0.9rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: var(--shadow-card);
+    position: relative;
+    overflow: visible;
+}
+
+.dolly-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #4298B5, #0ea5e9);
+    transform: scaleX(0);
+    transition: transform 0.4s ease;
+}
+
+.dolly-card:hover {
+    border-color: rgba(66, 152, 181, 0.9);
+    transform: translateY(-4px);
+    box-shadow: 0 15px 25px rgba(15, 23, 42, 0.12);
+}
+
+.dolly-card:hover::before {
+    transform: scaleX(1);
+}
+
+.dolly-card.selected {
+    border-color: #10b981;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.18));
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15), 0 12px 30px rgba(16, 185, 129, 0.15);
+}
+
+.dolly-card.selected::before {
+    background: linear-gradient(90deg, #10b981, #059669);
+    transform: scaleX(1);
+}
+
+.dolly-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.dolly-number {
+    font-weight: 700;
+    font-size: clamp(1rem, 1.8vw, 1.2rem);
+    color: var(--text-base);
+}
+
+.vin-count-badge {
+    background: rgba(66, 152, 181, 0.15);
+    color: #0c4a6e;
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.vin-list-preview {
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.vin-list-preview strong {
+    font-size: 0.85rem;
+    color: #374151;
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.vin-preview-hint {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+    display: none; /* Hide hint since VINs are always visible */
+}
+
+.vin-tags {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.vin-tag {
+    background: rgba(15, 23, 42, 0.06);
+    color: #1e293b;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid rgba(15, 23, 42, 0.15);
+}
+
+.vin-tag.more {
+    background: rgba(255, 196, 38, 0.15);
+    color: #92400e;
+    border-color: rgba(255, 196, 38, 0.5);
+}
+
+.vin-hover-preview {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+    z-index: 10000;
+    pointer-events: auto;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    min-width: 300px;
+    max-width: 450px;
+    max-height: 350px;
+    overflow-y: auto;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+}
+
+.vin-hover-preview::-webkit-scrollbar {
+    width: 8px;
+}
+
+.vin-hover-preview::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.05);
+    border-radius: 4px;
+}
+
+.vin-hover-preview::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.2);
+    border-radius: 4px;
+}
+
+.vin-hover-preview::-webkit-scrollbar-thumb:hover {
+    background: rgba(15, 23, 42, 0.3);
+}
+
+.dolly-card.show-vins .vin-hover-preview {
+    opacity: 1;
+}
+
+.vin-preview-header {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid rgba(15, 23, 42, 0.1);
+}
+
+.vin-preview-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 6px;
+}
+
+.vin-preview-item {
+    font-size: 0.75rem;
+    padding: 8px 10px;
+    background: rgba(15, 23, 42, 0.04);
+    border-radius: 4px;
+    color: #1e293b;
+    font-weight: 500;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    text-align: center;
+}
+
+.vin-preview-item:last-child {
+    border-bottom: none;
+}
+
+.dolly-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.dolly-card-body {
+    flex: 1;
+}
+
+.selection-indicator {
+    width: 22px;
+    height: 22px;
+    border: 2px solid rgba(15, 23, 42, 0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+}
+
+.dolly-card.selected .selection-indicator {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-color: transparent;
+    transform: scale(1.05);
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.35);
+}
+
+.check-mark {
+    color: white;
+    font-weight: bold;
+    display: none;
+    font-size: 1.1rem;
+}
+
+.dolly-card.selected .check-mark {
+    display: block;
+    animation: checkmark 0.3s ease;
+}
+
+@keyframes checkmark {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.detail-value {
+    color: var(--text-base);
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.dolly-status {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-active {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.status-pending {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+    border: 1px solid #fbbf24;
+}
+
+.status-completed {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    color: #1d4ed8;
+    border: 1px solid #60a5fa;
+}
+
+.status-submitted {
+    background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
+    color: #7c3aed;
+    border: 1px solid #a855f7;
+    font-weight: 700;
+}
+
+.status-submitted_terminal {
+    background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
+    color: #7c3aed;
+    border: 1px solid #a855f7;
+    font-weight: 700;
+}
+
+.status-waiting {
+    background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+    color: #475569;
+    border: 1px solid #94a3b8;
+}
+
+.submitted-dolly {
+    opacity: 0.6;
+    pointer-events: none;
+    border: 2px solid #a855f7;
+    background: linear-gradient(135deg, #faf5ff, #f3e8ff);
+}
+
+.submitted-dolly .dolly-header {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: white;
+}
+
+.submitted-mark {
+    font-size: 0.75rem;
+    color: #10b981;
+    font-weight: 700;
+    background: rgba(16, 185, 129, 0.1);
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid #10b981;
+}
+
+.submit-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: flex-start;
+}
+
+@media (min-width: 768px) {
+    .submit-actions {
+        gap: 15px;
+        width: auto;
+        justify-content: flex-end;
+    }
+}
+
+.empty-state, .loading-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: var(--text-muted);
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px dashed rgba(15, 23, 42, 0.15);
+    box-shadow: var(--shadow-card);
+}
+
+.empty-state h3, .loading-state h3 {
+    margin-bottom: 0.75rem;
+    color: var(--text-base);
+}
+
+.search-input-container {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.search-input-container .form-input {
+    flex: 1;
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-input-container .form-input:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(66, 152, 181, 0.25);
+}
+
+.search-btn {
+    padding: 0.85rem 1.5rem;
+    white-space: nowrap;
+}
+
+.search-hint {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 0.35rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+    color: var(--text-base);
+    font-size: 0.95rem;
+}
+
+.form-select, .form-input {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    background: #fff;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.form-select:focus, .form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(66, 152, 181, 0.25);
+}
+
+.counts-display {
+    background: rgba(14, 165, 233, 0.1);
+    padding: 0.9rem 1.1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(14, 165, 233, 0.4);
+    font-weight: 600;
+    color: #0c4a6e;
+}
+
+@media (max-width: 768px) {
+    .dollys-grid {
+        gap: 0.65rem;
+    }
+    
+    .submit-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .header-section {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .selection-info {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+</style>
+
+<script>
+let manualCollection = {
+    allDollys: [],
+    selectedDollys: []
+};
+
+// Initialize manual collection - can be called on page load or after updates
+function initManualCollection() {
+    // Get all dolly cards
+    const dollyCards = document.querySelectorAll('.dolly-card');
+    manualCollection.allDollys = Array.from(dollyCards).map(card => ({
+        order: parseInt(card.dataset.order),
+        dollyNo: card.dataset.dollyNo,
+        vinCount: parseInt(card.dataset.vinCount),
+        vins: JSON.parse(card.dataset.vins || '[]'),
+        customer: card.dataset.customer,
+        eol: card.dataset.eol
+    }));
+    
+    // Sort by order
+    manualCollection.allDollys.sort((a, b) => a.order - b.order);
+    
+    updateCounts();
+    initVinHoverPreviews();
+    console.log(`✅ Manuel dolly toplama başlatıldı: ${manualCollection.allDollys.length} dolly yüklendi`);
+    if (manualCollection.allDollys.length > 0) {
+        console.log(`📦 İlk dolly: ${manualCollection.allDollys[0].dollyNo} (${manualCollection.allDollys[0].vinCount} VIN)`);
+        console.log(`📦 Son dolly: ${manualCollection.allDollys[manualCollection.allDollys.length-1].dollyNo}`);
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', initManualCollection);
+
+function initVinHoverPreviews() {
+    const hoverDelay = 600;
+    document.querySelectorAll('.dolly-card').forEach(card => {
+        let hoverTimer;
+        
+        card.addEventListener('mouseenter', () => {
+            hoverTimer = setTimeout(() => {
+                card.classList.add('show-vins');
+            }, hoverDelay);
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            clearTimeout(hoverTimer);
+            card.classList.remove('show-vins');
+        });
+        
+        card.addEventListener('click', () => {
+            clearTimeout(hoverTimer);
+            card.classList.remove('show-vins');
+        });
+    });
+}
+
+function toggleDollySelection(order) {
+    console.log(`🔍 toggleDollySelection çağrıldı - order: ${order}, tip: ${typeof order}`);
+    
+    const dollyCard = document.getElementById(`dolly-${order}`);
+    console.log(`📦 Dolly card bulundu:`, dollyCard ? 'Evet' : 'HAYIR');
+    
+    if (!dollyCard) {
+        console.error(`❌ dolly-${order} ID'li element bulunamadı!`);
+        return;
+    }
+    
+    const isSelected = dollyCard.classList.contains('selected');
+    console.log(`✓ Mevcut durum: ${isSelected ? 'SEÇİLİ' : 'SEÇİLİ DEĞİL'}`);
+    
+    if (isSelected) {
+        // Deselect - sadece son seçileni kaldırabilir
+        const lastSelected = Math.max(...manualCollection.selectedDollys);
+        if (order !== lastSelected) {
+            alert('Sadece son seçili dolly çıkarılabilir! Sıralı seçim yapmalısınız.');
+            return;
+        }
+        dollyCard.classList.remove('selected');
+        manualCollection.selectedDollys = manualCollection.selectedDollys.filter(o => o !== order);
+    } else {
+        // Select - sıralı olmalı
+        if (manualCollection.selectedDollys.length > 0) {
+            const lastSelected = Math.max(...manualCollection.selectedDollys);
+            if (order !== lastSelected + 1) {
+                alert('Dollyler sırayla seçilmelidir! Bir sonraki dollyyi seçin.');
+                return;
+            }
+        } else {
+            // İlk seçim - 1. dolly olmalı
+            if (order !== 1) {
+                alert('Lütfen 1. dollyden başlayın!');
+                return;
+            }
+        }
+        dollyCard.classList.add('selected');
+        manualCollection.selectedDollys.push(order);
+    }
+    
+    updateCounts();
+    updateSubmitButton();
+}
+
+function updateCounts() {
+    document.getElementById('selectedCount').textContent = manualCollection.selectedDollys.length;
+    document.getElementById('foundCount').textContent = manualCollection.allDollys.length;
+}
+
+function updateSubmitButton() {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = manualCollection.selectedDollys.length === 0;
+}
+
+function selectAll() {
+    const visibleCards = Array.from(document.querySelectorAll('.dolly-card'))
+        .filter(card => card.style.display !== 'none')
+        .sort((a, b) => parseInt(a.dataset.order) - parseInt(b.dataset.order));
+    
+    manualCollection.selectedDollys = [];
+    visibleCards.forEach(card => {
+        const order = parseInt(card.dataset.order);
+        card.classList.add('selected');
+        manualCollection.selectedDollys.push(order);
+    });
+    manualCollection.selectedDollys.sort((a, b) => a - b);
+    updateCounts();
+    updateSubmitButton();
+}
+
+function deselectAll() {
+    manualCollection.selectedDollys = [];
+    document.querySelectorAll('.dolly-card').forEach(card => card.classList.remove('selected'));
+    updateCounts();
+    updateSubmitButton();
+}
+
+function selectReverse() {
+    alert('Sıralı seçim modunda bu özellik kullanılamaz. Lütfen sırayla seçin.');
+}
+
+function filterDollys() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const dollyCards = document.querySelectorAll('.dolly-card');
+    
+    let visibleCount = 0;
+    dollyCards.forEach(card => {
+        const dollyNo = card.dataset.dollyNo ? card.dataset.dollyNo.toLowerCase() : '';
+        const vinNo = card.dataset.vinNo ? card.dataset.vinNo.toLowerCase() : '';
+        const customer = card.dataset.customer ? card.dataset.customer.toLowerCase() : '';
+        const eol = card.dataset.eol ? card.dataset.eol.toLowerCase() : '';
+        
+        if (dollyNo.includes(searchTerm) || 
+            vinNo.includes(searchTerm) || 
+            customer.includes(searchTerm) ||
+            eol.includes(searchTerm)) {
+            card.style.display = 'block';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    document.getElementById('foundCount').textContent = visibleCount;
+}
+
+function submitSelected() {
+    if (manualCollection.selectedDollys.length === 0) {
+        alert('❌ Hiç dolly seçilmemiş.');
+        return;
+    }
+    
+    // Get selected dolly data with all VINs (in order)
+    const selectedDollyData = manualCollection.selectedDollys
+        .sort((a, b) => a - b)
+        .map(order => manualCollection.allDollys.find(d => d.order === order))
+        .filter(d => d !== undefined);
+    
+    // Calculate totals
+    const totalDollys = selectedDollyData.length;
+    const totalVins = selectedDollyData.reduce((sum, d) => sum + d.vinCount, 0);
+    
+    const message = `${totalDollys} dolly (toplam ${totalVins} VIN) SIRAYLA submit edilecek. Emin misiniz?`;
+    if (!confirm(message)) {
+        return;
+    }
+    
+    // Prepare submission data - expand each dolly to all its VINs IN ORDER
+    const allVinSubmissions = [];
+    selectedDollyData.forEach(dolly => {
+        dolly.vins.forEach(vin => {
+            allVinSubmissions.push({
+                id: `${dolly.dollyNo}-${vin}`,
+                dolly_no: dolly.dollyNo,
+                vin_no: vin,
+                order: dolly.order,
+                selectedAt: new Date().toISOString()
+            });
+        });
+    });
+    
+    const submissionData = {
+        groupId: 1,
+        groupName: 'Manuel_Toplama',
+        dollys: allVinSubmissions
+    };
+    
+    console.log('Submitting in order:', allVinSubmissions.map(d => `${d.dolly_no}:${d.vin_no}`));
+    
+    // Show loading state
+    const submitBtn = document.getElementById('submitBtn');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span>⏳</span> Gönderiliyor...';
+    submitBtn.disabled = true;
+    
+    fetch('/api/manual-collection-submission', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(submissionData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            submitBtn.innerHTML = '<span>✅</span> Başarılı!';
+            submitBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+            
+            setTimeout(() => {
+                alert(`Başarılı!\n\n${data.submitted_count} dolly submit edildi\nPart Number: ${data.part_number}\nToplam ${data.total_vins || data.submitted_count * 8} VIN`);
+                window.location.href = '/';
+            }, 1000);
+        } else {
+            alert('❌ Hata: ' + data.message);
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Submission error:', error);
+        alert('❌ Submit işlemi sırasında hata oluştu.');
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+}
+
+function showLoading() {
+    document.getElementById('loadingState').style.display = 'block';
+    document.getElementById('dollysContainer').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+}
+
+function hideLoading() {
+    document.getElementById('loadingState').style.display = 'none';
+}
+
+function showEmptyState() {
+    document.getElementById('emptyState').style.display = 'block';
+    document.getElementById('dollysContainer').style.display = 'none';
+    document.getElementById('loadingState').style.display = 'none';
+}
+
+function hideAllSections() {
+    document.getElementById('selectionInfo').style.display = 'none';
+    document.getElementById('dollysContainer').style.display = 'none';
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+}
+
+// ============================================
+// Auto-check for new dollys (polling)
+// ============================================
+let currentDollyCount = 0;
+let pollInterval = null;
+let isUpdating = false;
+
+// Calculate actual dolly count from cards
+function getCurrentDollyCount() {
+    return document.querySelectorAll('.dolly-card').length;
+}
+
+// Start polling when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    currentDollyCount = getCurrentDollyCount();
+    console.log(`📊 Başlangıç dolly sayısı: ${currentDollyCount}`);
+    
+    // Poll every 3 seconds for new dollys
+    pollInterval = setInterval(checkForNewDollys, 3000);
+    console.log('🔄 Otomatik dolly kontrolü başlatıldı (3 saniyede bir)');
+});
+
+// Stop polling when page unloads
+window.addEventListener('beforeunload', function() {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+    }
+});
+
+function checkForNewDollys() {
+    if (isUpdating) {
+        console.log('⏭️ Güncelleme devam ediyor, atlanıyor...');
+        return;
+    }
+    
+    fetch(`/api/manual-collection/check-updates?last_count=${currentDollyCount}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.has_updates && data.new_count > 0) {
+                console.log(`✨ ${data.new_count} yeni dolly tespit edildi! Güncelleniyor...`);
+                isUpdating = true;
+                
+                // Update the dolly section
+                updateManualCollectionDollys().then((newCards) => {
+                    currentDollyCount = data.total_count;
+                    isUpdating = false;
+                    
+                    // Only show notification if there are actually new cards displayed
+                    if (newCards && newCards.length > 0) {
+                        if (window.showNotification) {
+                            window.showNotification(
+                                `✨ ${newCards.length} yeni dolly eklendi! Kartlar otomatik açıldı.`,
+                                'success',
+                                6000
+                            );
+                        }
+                    } else {
+                        console.log('ℹ️ Yeni kayıt var ama zaten submit edilmiş, görüntülenecek dolly yok');
+                    }
+                }).catch(err => {
+                    isUpdating = false;
+                    console.error('Güncelleme hatası:', err);
+                });
+            }
+        })
+        .catch(err => {
+            console.error('Dolly kontrolü hatası:', err);
+            isUpdating = false;
+        });
+}
+
+// Update manual collection dollys without full page reload
+function updateManualCollectionDollys() {
+    return new Promise((resolve, reject) => {
+        const dollysGrid = document.getElementById('dollysGrid');
+        if (!dollysGrid) {
+            reject('Grid not found');
+            return;
+        }
+        
+        console.log('🔄 Manuel toplama verileri güncelleniyor...');
+        
+        // Store current state
+        const currentDollyNos = new Set();
+        const selectedDollys = new Set();
+        const expandedCards = new Set();
+        
+        // Remember which cards are selected and expanded
+        document.querySelectorAll('.dolly-card').forEach(card => {
+            const dollyNo = card.dataset.dollyNo;
+            currentDollyNos.add(dollyNo);
+            
+            if (card.classList.contains('selected')) {
+                selectedDollys.add(dollyNo);
+            }
+            if (card.classList.contains('expanded')) {
+                expandedCards.add(dollyNo);
+            }
+        });
+        
+        // Fetch updated data
+        fetch(window.location.href)
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newGrid = doc.getElementById('dollysGrid');
+                
+                if (!newGrid) {
+                    reject('New grid not found');
+                    return;
+                }
+                
+                // Find new dollys
+                const newDollyCards = [];
+                newGrid.querySelectorAll('.dolly-card').forEach(card => {
+                    const dollyNo = card.dataset.dollyNo;
+                    if (!currentDollyNos.has(dollyNo)) {
+                        newDollyCards.push({
+                            dollyNo: dollyNo,
+                            vinCount: card.dataset.vinCount,
+                            element: card
+                        });
+                    }
+                });
+                
+                // Update the grid content
+                dollysGrid.innerHTML = newGrid.innerHTML;
+                
+                // Re-initialize the page
+                initManualCollection();
+                
+                // Restore and apply states
+                setTimeout(() => {
+                    document.querySelectorAll('.dolly-card').forEach(card => {
+                        const dollyNo = card.dataset.dollyNo;
+                        
+                        // Restore selection
+                        if (selectedDollys.has(dollyNo)) {
+                            card.classList.add('selected');
+                        }
+                        
+                        // Auto-expand new cards OR restore previously expanded
+                        const isNewCard = !currentDollyNos.has(dollyNo);
+                        const wasExpanded = expandedCards.has(dollyNo);
+                        
+                        if (isNewCard || wasExpanded) {
+                            card.classList.add('expanded');
+                            
+                            // Highlight and scroll to new cards
+                            if (isNewCard) {
+                                setTimeout(() => {
+                                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    card.style.animation = 'newCardHighlight 2.5s ease-out';
+                                }, 300);
+                            }
+                        }
+                    });
+                    
+                    console.log(`✅ Güncelleme tamamlandı: ${newDollyCards.length} yeni kart eklendi`);
+                    resolve(newDollyCards);
+                }, 100);
+            })
+            .catch(err => {
+                console.error('Manuel toplama güncelleme hatası:', err);
+                reject(err);
+            });
+    });
+}
+
+</script>
+{% endblock %}

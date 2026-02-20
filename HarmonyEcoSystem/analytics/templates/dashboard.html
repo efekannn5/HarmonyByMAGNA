@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block page_title %}Production Overview{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card primary">
+            <div class="icon-wrapper">
+                <i class="bi bi-boxes"></i>
+            </div>
+            <h6>Total Dollies</h6>
+            <div class="value" id="totalDollies">-</div>
+            <div class="change positive">
+                <i class="bi bi-arrow-up"></i>
+                <span>Live data</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card success">
+            <div class="icon-wrapper">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <h6>Completed</h6>
+            <div class="value" id="completedDollies">-</div>
+            <div class="change positive">
+                <i class="bi bi-arrow-up"></i>
+                <span id="completionRate">-%</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card warning">
+            <div class="icon-wrapper">
+                <i class="bi bi-hourglass-split"></i>
+            </div>
+            <h6>In Progress</h6>
+            <div class="value" id="inProgress">-</div>
+            <div class="change">
+                <i class="bi bi-clock"></i>
+                <span>Real-time</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card danger">
+            <div class="icon-wrapper">
+                <i class="bi bi-exclamation-triangle"></i>
+            </div>
+            <h6>Critical Alerts</h6>
+            <div class="value" id="criticalAlerts">-</div>
+            <div class="change negative">
+                <i class="bi bi-arrow-up"></i>
+                <span>>6h wait</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-8">
+        <div class="chart-card">
+            <h6><i class="bi bi-bar-chart"></i> Stage Distribution</h6>
+            <canvas id="stageChart" height="80"></canvas>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="chart-card">
+            <h6><i class="bi bi-pie-chart"></i> Status Breakdown</h6>
+            <canvas id="statusChart" height="200"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="chart-card">
+            <h6><i class="bi bi-graph-up"></i> Top Production Lines</h6>
+            <canvas id="linesChart" height="120"></canvas>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="chart-card">
+            <h6><i class="bi bi-clock-history"></i> Average Cycle Time</h6>
+            <div class="text-center py-4">
+                <div style="font-size: 48px; font-weight: 700; color: #2563eb;" id="avgCycleTime">-</div>
+                <div class="text-muted mt-2">Hours per Dolly</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function loadDashboard() {
+    fetch('/analytics/api/overview')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('totalDollies').textContent = data.total_dollies || 0;
+            document.getElementById('completedDollies').textContent = data.completed || 0;
+            document.getElementById('inProgress').textContent = data.in_progress || 0;
+            document.getElementById('criticalAlerts').textContent = data.critical_alerts || 0;
+            
+            const rate = data.total_dollies > 0 ? ((data.completed / data.total_dollies) * 100).toFixed(1) : 0;
+            document.getElementById('completionRate').textContent = rate + '%';
+            
+            document.getElementById('avgCycleTime').textContent = data.avg_cycle_time ? 
+                data.avg_cycle_time.toFixed(1) : '-';
+            
+            // Stage chart
+            const stageCtx = document.getElementById('stageChart').getContext('2d');
+            new Chart(stageCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.stages.map(s => s.stage),
+                    datasets: [{
+                        label: 'Dollies',
+                        data: data.stages.map(s => s.count),
+                        backgroundColor: ['#3b82f6', '#fbbf24', '#f87171', '#10b981']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } }
+                }
+            });
+            
+            // Status pie
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.stages.map(s => s.stage),
+                    datasets: [{
+                        data: data.stages.map(s => s.count),
+                        backgroundColor: ['#3b82f6', '#fbbf24', '#f87171', '#10b981']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+            
+            // Lines chart
+            const linesCtx = document.getElementById('linesChart').getContext('2d');
+            new Chart(linesCtx, {
+                type: 'horizontalBar',
+                data: {
+                    labels: data.top_lines.map(l => l.line),
+                    datasets: [{
+                        label: 'Production',
+                        data: data.top_lines.map(l => l.count),
+                        backgroundColor: '#10b981'
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        });
+}
+
+loadDashboard();
+setInterval(loadDashboard, 30000);
+</script>
+{% endblock %}

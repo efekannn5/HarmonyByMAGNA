@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dolly Dolma Durumu - Yüzde Göstergesi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header .timestamp {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .summary-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .summary-card .number {
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .summary-card .label {
+            color: #666;
+            font-size: 1.1em;
+            margin-top: 10px;
+        }
+        
+        .eol-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+        }
+        
+        .eol-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease;
+        }
+        
+        .eol-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        }
+        
+        .eol-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .status-icon {
+            font-size: 3em;
+            margin-right: 15px;
+        }
+        
+        .eol-name {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .dolly-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .dolly-info .item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .dolly-info .item:last-child {
+            border-bottom: none;
+        }
+        
+        .dolly-info .label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .dolly-info .value {
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .progress-container {
+            margin: 20px 0;
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 40px;
+            background: #e0e0e0;
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .progress-fill.warning {
+            background: linear-gradient(90deg, #FF9800, #FFC107);
+        }
+        
+        .progress-fill.danger {
+            background: linear-gradient(90deg, #F44336, #E91E63);
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 1.1em;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        .status-message.filling {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+        
+        .status-message.warning {
+            background: #FFF3E0;
+            color: #E65100;
+        }
+        
+        .status-message.danger {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+        
+        .scan-status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .scan-status.enabled {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .scan-status.disabled {
+            background: #F44336;
+            color: white;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.5em;
+            color: white;
+        }
+        
+        .error {
+            background: #FFEBEE;
+            color: #C62828;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s ease;
+        }
+        
+        .refresh-btn:hover {
+            background: #5568d3;
+        }
+        
+        .auto-refresh {
+            color: white;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Dolly Dolma Durumu</h1>
+            <div class="timestamp" id="timestamp">Yükleniyor...</div>
+            <button class="refresh-btn" onclick="loadData()">🔄 Yenile</button>
+            <div class="auto-refresh">⏰ Otomatik yenileme: Her 10 saniye</div>
+        </div>
+        
+        <div id="summary"></div>
+        <div id="content" class="loading">📡 Veriler yükleniyor...</div>
+    </div>
+
+    <script>
+        let autoRefreshInterval;
+        
+        async function loadData() {
+            try {
+                const response = await fetch('/api/yuzde');
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderData(data);
+                } else {
+                    showError('Veri yüklenemedi: ' + (data.error || 'Bilinmeyen hata'));
+                }
+            } catch (error) {
+                showError('API bağlantı hatası: ' + error.message);
+            }
+        }
+        
+        function renderData(data) {
+            // Timestamp
+            const timestamp = new Date(data.timestamp);
+            document.getElementById('timestamp').textContent = 
+                '📅 ' + timestamp.toLocaleString('tr-TR', { 
+                    dateStyle: 'full', 
+                    timeStyle: 'medium' 
+                });
+            
+            // Summary
+            const summary = data.summary;
+            const summaryHtml = `
+                <div class="summary">
+                    <div class="summary-card">
+                        <div class="number">${summary.total_active_dollys}</div>
+                        <div class="label">Toplam Aktif Dolly</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="number" style="color: #4CAF50">${summary.filling_dollys}</div>
+                        <div class="label">Doluyor</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="number" style="color: #F44336">${summary.full_dollys}</div>
+                        <div class="label">Dolu</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="number" style="color: #9E9E9E">${summary.empty_dollys}</div>
+                        <div class="label">Boş</div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('summary').innerHTML = summaryHtml;
+            
+            // EOL Groups
+            let eolHtml = '<div class="eol-grid">';
+            
+            data.eol_groups.forEach(eol => {
+                const percentage = (eol.current_vin_count / eol.max_vin_capacity * 100);
+                let statusClass = 'filling';
+                let progressClass = '';
+                let statusIcon = '🟢';
+                
+                if (percentage >= 100) {
+                    statusClass = 'danger';
+                    progressClass = 'danger';
+                    statusIcon = '🔴';
+                } else if (percentage >= 90) {
+                    statusClass = 'warning';
+                    progressClass = 'warning';
+                    statusIcon = '🟠';
+                } else if (percentage === 0) {
+                    statusIcon = '⚪';
+                }
+                
+                eolHtml += `
+                    <div class="eol-card">
+                        <div class="eol-header">
+                            <div class="status-icon">${statusIcon}</div>
+                            <div class="eol-name">${eol.eol_name}</div>
+                        </div>
+                        
+                        <div class="dolly-info">
+                            <div class="item">
+                                <span class="label">Dolly No:</span>
+                                <span class="value">${eol.current_dolly}</span>
+                            </div>
+                            <div class="item">
+                                <span class="label">VIN Durumu:</span>
+                                <span class="value">${eol.vin_display}</span>
+                            </div>
+                            <div class="item">
+                                <span class="label">Kalan VIN:</span>
+                                <span class="value">${eol.remaining_vins}</span>
+                            </div>
+                            <div class="item">
+                                <span class="label">Son VIN:</span>
+                                <span class="value">${eol.last_vin}</span>
+                            </div>
+                            <div class="item">
+                                <span class="label">Bekleyen Dolly:</span>
+                                <span class="value">${eol.pending_dollys} adet</span>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-container">
+                            <div class="progress-label">
+                                <span>Dolma Durumu</span>
+                                <span>${eol.vin_display}</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill ${progressClass}" style="width: ${percentage}%">
+                                    ${eol.vin_display}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="status-message ${statusClass}">
+                            ${eol.message}
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <span class="scan-status ${eol.can_scan ? 'enabled' : 'disabled'}">
+                                ${eol.can_scan ? '✅ Tarama Açık' : '🔒 Tarama Kapalı'}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            eolHtml += '</div>';
+            document.getElementById('content').innerHTML = eolHtml;
+        }
+        
+        function showError(message) {
+            document.getElementById('content').innerHTML = `
+                <div class="error">
+                    ❌ ${message}
+                </div>
+            `;
+        }
+        
+        // İlk yükleme
+        loadData();
+        
+        // Otomatik yenileme (10 saniyede bir)
+        autoRefreshInterval = setInterval(loadData, 10000);
+    </script>
+</body>
+</html>

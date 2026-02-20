@@ -1,0 +1,538 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+.operator-dashboard-layout {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 1.5rem;
+    height: calc(100vh - 145px);
+    overflow: hidden;
+}
+
+.task-list-panel {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.task-list-header {
+    background: #DA291C;
+    color: white;
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.task-list-header h2 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.125rem;
+    font-weight: 700;
+}
+
+.task-list-header p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.875rem;
+}
+
+.task-list-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.task-group-section {
+    margin-bottom: 1.5rem;
+}
+
+.task-group-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #6b7280;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    padding-left: 0.5rem;
+}
+
+.task-card-compact {
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.task-card-compact:hover {
+    border-color: #4298B5;
+    box-shadow: 0 4px 12px rgba(66, 152, 181, 0.15);
+    transform: translateY(-2px);
+}
+
+.task-card-compact.active {
+    border-color: #DA291C;
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+    box-shadow: 0 0 0 3px rgba(218, 41, 28, 0.1);
+}
+
+.task-card-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+.task-card-status {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.task-card-status.status-pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: #b45309;
+}
+
+.task-card-meta {
+    font-size: 0.75rem;
+    color: #6b7280;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.shipping-tag {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.tag-asn { background: #ecfccb; color: #365314; }
+.tag-irsaliye { background: #fecaca; color: #991b1b; }
+.tag-both { background: #e0e7ff; color: #3730a3; }
+
+/* Right Panel - Task Detail with ASN Form */
+.task-detail-panel {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.task-detail-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    flex-direction: column;
+    color: #9ca3af;
+}
+
+.task-detail-empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.task-detail-content-container {
+    flex: 1;
+    overflow-y: auto;
+    display: none;
+}
+
+.task-detail-content-container.active {
+    display: block;
+}
+
+@media (max-width: 1200px) {
+    .operator-dashboard-layout {
+        grid-template-columns: 300px 1fr;
+    }
+}
+
+/* Real-time Notification Styles */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+.notification-flash {
+    animation: slideInRight 0.5s ease-out;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.badge.bg-light.pulse-badge {
+    animation: pulse 2s infinite;
+}
+</style>
+
+<div class="operator-dashboard-layout">
+    <!-- Sol Panel: Görev Listesi -->
+    <div class="task-list-panel">
+        <div class="task-list-header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2 style="margin: 0;">📋 Aktif Sevkiyatlar</h2>
+                    <p style="margin: 0.25rem 0 0 0;">Grup adına göre listelenir</p>
+                </div>
+                <div>
+                    <button type="button" id="notification-toggle-btn" class="btn btn-light btn-sm" onclick="toggleNotifications()" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                        <i class="bi bi-bell-fill"></i>
+                    </button>
+                    <span class="badge bg-light text-dark ms-1 pulse-badge" title="Otomatik yenileme aktif" style="font-size: 0.7rem;">
+                        <i class="bi bi-arrow-repeat"></i> 3s
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="task-list-scroll">
+            {% if pending_tasks %}
+            <div class="task-group-section">
+                <div class="task-group-label">Bekleyen Sevkiyatlar</div>
+                {% for task in pending_tasks %}
+                <div class="task-card-compact" data-part="{{ task.part_number }}" onclick="loadTaskDetail('{{ task.part_number }}', this)">
+                    <div class="task-card-title">{{ task.display_name or task.part_number }}</div>
+                    <span class="task-card-status status-pending">● Beklemede</span>
+                    <div class="task-card-meta">
+                        <div>📅 {{ task.created_at|local_dt }}</div>
+                        <div>� {{ task.total_dollys }} Dolly / 📦 {{ task.total_items }} VIN</div>
+                        <div><span class="shipping-tag tag-{{ task.group_tag }}">
+                            {% if task.group_tag == "asn" %}ASN{% elif task.group_tag == "irsaliye" %}İrsaliye{% else %}ASN + İrsaliye{% endif %}
+                        </span></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if not pending_tasks and not assigned_tasks and not completed_tasks %}
+            <div style="text-align: center; padding: 2rem; color: #9ca3af;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                <p>Henüz görev bulunmuyor</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Sağ Panel: Task Detail (Direkt içerik, iframe yok) -->
+    <div class="task-detail-panel">
+        <!-- Empty State -->
+        <div class="task-detail-empty" id="emptyState">
+            <div class="task-detail-empty-icon">📋</div>
+            <h3>Soldan bir görev seçin</h3>
+            <p style="color: #9ca3af; font-size: 0.9rem; margin-top: 0.5rem;">Detayları görüntülemek için bir part numarasına tıklayın</p>
+        </div>
+        
+        <!-- Task Detail Content (iframe olmadan, direkt içerik) -->
+        <div class="task-detail-content-container" id="taskDetailContainer" style="display: none; flex: 1; overflow-y: auto; padding: 1.5rem;">
+            <!-- Content will be loaded here via JavaScript -->
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================
+// REAL-TIME NOTIFICATION SYSTEM
+// ============================================
+var lastTaskCount = {{ pending_tasks|length }};
+var lastTaskIds = [
+    {% for task in pending_tasks %}
+    "{{ task.part_number }}"{{ "," if not loop.last else "" }}
+    {% endfor %}
+];
+var notificationSound = null;
+var isPageVisible = true;
+var pollInterval = null;
+var notificationsEnabled = localStorage.getItem('operatorNotifications') !== 'false';
+
+// Ses dosyası hazırlama
+function initNotificationSound() {
+    try {
+        notificationSound = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE');
+    } catch (e) {
+        console.error('Ses başlatma hatası:', e);
+    }
+}
+
+// Sayfa görünürlük kontrolü
+document.addEventListener('visibilitychange', function() {
+    isPageVisible = !document.hidden;
+});
+
+// Browser notification izni isteme
+function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        console.log('❌ Bu tarayıcı bildirim desteklemiyor');
+        return;
+    }
+    
+    console.log('🔔 Notification permission:', Notification.permission);
+    
+    if (Notification.permission === 'default') {
+        Notification.requestPermission().then(function(permission) {
+            console.log('✅ Bildirim izni sonucu:', permission);
+            if (permission === 'granted') {
+                showBrowserNotification('Bildirimler Aktif', 'Yeni görev geldiğinde bildirim alacaksınız');
+            }
+        });
+    } else if (Notification.permission === 'granted') {
+        console.log('✅ Bildirim izni zaten verilmiş');
+    } else {
+        console.log('❌ Bildirim izni reddedilmiş');
+    }
+}
+
+// Browser notification gösterme
+function showBrowserNotification(title, message) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
+        return;
+    }
+    var notification = new Notification(title, {
+        body: message,
+        icon: '/static/favicon.ico',
+        tag: 'harmony-operator',
+        requireInteraction: false
+    });
+    notification.onclick = function() {
+        window.focus();
+        notification.close();
+    };
+    setTimeout(function() {
+        notification.close();
+    }, 5000);
+}
+
+// Bildirim sesi çalma
+function playNotificationSound() {
+    if (notificationSound && notificationsEnabled) {
+        try {
+            notificationSound.currentTime = 0;
+            notificationSound.play().catch(function(err) {
+                console.log('Ses çalma hatası:', err);
+            });
+        } catch (e) {
+            console.error('Ses çalma hatası:', e);
+        }
+    }
+}
+
+// Aktif görevleri kontrol et
+function checkForNewTasks() {
+    fetch('/api/operator/active-tasks-status', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin'
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (!data.success) {
+            console.error('❌ API hatası:', data.error);
+            return;
+        }
+        
+        var currentTaskCount = data.count;
+        var currentTaskIds = data.tasks.map(function(t) { return t.part_number; });
+        
+        console.log('📊 Polling: Şu anki=' + currentTaskCount + ', Önceki=' + lastTaskCount);
+        console.log('📋 Görev ID\'leri:', currentTaskIds.join(', '));
+        
+        var hasNewTask = false;
+        
+        if (currentTaskCount > lastTaskCount) {
+            hasNewTask = true;
+            console.log('🆕 YENİ GÖREV TESPİT EDİLDİ! Görev sayısı arttı:', lastTaskCount, '→', currentTaskCount);
+        } else if (currentTaskCount === lastTaskCount && currentTaskCount > 0) {
+            for (var i = 0; i < currentTaskIds.length; i++) {
+                if (lastTaskIds.indexOf(currentTaskIds[i]) === -1) {
+                    hasNewTask = true;
+                    console.log('🆕 YENİ GÖREV TESPİT EDİLDİ! Yeni ID bulundu:', currentTaskIds[i]);
+                    break;
+                }
+            }
+        }
+        
+        if (hasNewTask) {
+            console.log('🎉 YENİ GÖREV VAR - BİLDİRİM BAŞLATIYOR...');
+            playNotificationSound();
+            
+            if (!isPageVisible) {
+                var message = currentTaskCount + ' aktif görev var';
+                if (data.tasks.length > 0) {
+                    message += ' (Son: ' + data.tasks[0].eol_name + ')';
+                }
+                console.log('📱 Browser notification gösteriliyor:', message);
+                showBrowserNotification('🆕 Yeni Görev!', message);
+            } else {
+                console.log('👁️ Sayfa görünür, sadece ses çalınıyor');
+            }
+            
+            setTimeout(function() {
+                console.log('🔄 Sayfa yenileniyor...');
+                window.location.reload();
+            }, 1000);
+        } else {
+            console.log('ℹ️ Değişiklik yok');
+        }
+        
+        lastTaskCount = currentTaskCount;
+        lastTaskIds = currentTaskIds;
+    })
+    .catch(function(error) {
+        console.error('❌ Polling hatası:', error);
+    });
+}
+
+// Bildirim toggle
+function toggleNotifications() {
+    notificationsEnabled = !notificationsEnabled;
+    localStorage.setItem('operatorNotifications', notificationsEnabled ? 'true' : 'false');
+    
+    var btn = document.getElementById('notification-toggle-btn');
+    if (btn) {
+        btn.innerHTML = notificationsEnabled ? 
+            '<i class="bi bi-bell-fill"></i>' : 
+            '<i class="bi bi-bell-slash"></i>';
+        btn.className = notificationsEnabled ? 'btn btn-light btn-sm' : 'btn btn-secondary btn-sm';
+    }
+}
+
+// ============================================
+// MEVCUT FONKSİYONLAR
+// ============================================
+let currentPartNumber = null;
+
+function loadTaskDetail(partNumber, cardElement) {
+    // Remove active class from all cards
+    document.querySelectorAll('.task-card-compact').forEach(card => {
+        card.classList.remove('active');
+    });
+    
+    // Add active class to clicked card
+    if (cardElement) {
+        cardElement.classList.add('active');
+    }
+    
+    // Store current part number
+    currentPartNumber = partNumber;
+    
+    // Hide empty state
+    document.getElementById('emptyState').style.display = 'none';
+    
+    // Show task detail container
+    const taskContainer = document.getElementById('taskDetailContainer');
+    taskContainer.style.display = 'block';
+    taskContainer.innerHTML = '<div style="text-align: center; padding: 3rem;"><div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div><p>Yükleniyor...</p></div>';
+    
+    // Fetch task detail content via AJAX
+    fetch(`/operator/task/${partNumber}?embed=true`)
+        .then(response => response.text())
+        .then(html => {
+            // Parse the HTML to extract body content
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const bodyContent = doc.body.innerHTML;
+            
+            // Inject the content
+            taskContainer.innerHTML = bodyContent;
+            
+            // Re-execute scripts from the loaded content
+            const scripts = taskContainer.querySelectorAll('script');
+            scripts.forEach(oldScript => {
+                const newScript = document.createElement('script');
+                Array.from(oldScript.attributes).forEach(attr => 
+                    newScript.setAttribute(attr.name, attr.value)
+                );
+                newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                oldScript.parentNode.replaceChild(newScript, oldScript);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading task detail:', error);
+            taskContainer.innerHTML = `
+                <div style="text-align: center; padding: 3rem; color: #ef4444;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">❌</div>
+                    <p>Görev detayları yüklenemedi</p>
+                    <button onclick="loadTaskDetail('${partNumber}', null)" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #4298B5; color: white; border: none; border-radius: 8px; cursor: pointer;">Tekrar Dene</button>
+                </div>
+            `;
+        });
+}
+
+// Sayfa yüklendiğinde real-time sistemi başlat
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Real-time notification system başlatılıyor...');
+    console.log('📊 Başlangıç görev sayısı:', lastTaskCount);
+    console.log('📋 Başlangıç görev ID\'leri:', lastTaskIds.join(', '));
+    
+    // Ses sistemini başlat
+    initNotificationSound();
+    
+    // Browser notification izni iste (DİREK!)
+    if ('Notification' in window) {
+        console.log('🔔 Mevcut bildirim izni:', Notification.permission);
+        if (Notification.permission === 'default') {
+            console.log('⚡ Bildirim izni şimdi isteniyor...');
+            requestNotificationPermission(); // Direkt çağır, timeout yok!
+        } else if (Notification.permission === 'granted') {
+            console.log('✅ Bildirim izni zaten verilmiş!');
+        } else {
+            console.log('❌ Bildirim izni reddedilmiş. Tarayıcı ayarlarından değiştirebilirsiniz.');
+        }
+    } else {
+        console.log('❌ Bu tarayıcı Notification API desteklemiyor');
+    }
+    
+    // 3 saniyede bir polling başlat
+    pollInterval = setInterval(checkForNewTasks, 3000);
+    
+    console.log('✅ Polling başlatıldı (3 saniye interval)');
+    console.log('🔔 Bildirimler:', notificationsEnabled ? 'Açık' : 'Kapalı');
+    
+    // Bildirim buton durumunu güncelle
+    var btn = document.getElementById('notification-toggle-btn');
+    if (btn) {
+        btn.innerHTML = notificationsEnabled ? 
+            '<i class="bi bi-bell-fill"></i>' : 
+            '<i class="bi bi-bell-slash"></i>';
+        btn.className = notificationsEnabled ? 'btn btn-light btn-sm' : 'btn btn-secondary btn-sm';
+    }
+    
+    console.log('🎯 İlk polling 3 saniye sonra başlayacak...');
+});
+
+// Sayfa kapatılırken polling'i durdur
+window.addEventListener('beforeunload', function() {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+    }
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,264 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<section class="card">
+  <div class="card-header">
+    <h2>📜 Sevkiyat Geçmişi</h2>
+    <p>SeferDollyEOL kayıtları - tüm kullanıcılar için görünür</p>
+  </div>
+
+  <button class="btn btn-sm btn-secondary" id="toggleFilterBtn" style="margin-bottom:1rem;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+    </svg>
+    Filtrele
+  </button>
+  <div id="filterPanel" style="display:none; margin-bottom:1.5rem; background:#ffffff; border:1px solid #e5e7eb; border-radius:12px; padding:1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+    <form method="get" id="filterForm">
+      <!-- Tarih Filtreleri -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 2px solid #f3f4f6;">
+        <div class="filter-group">
+          <label for="filter_date_start" style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 0.5rem;">
+            📅 Başlangıç Tarihi
+          </label>
+          <input type="date" id="filter_date_start" name="filter_date_start" value="{{ filters['DateStart'] }}" 
+                 style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;">
+        </div>
+        <div class="filter-group">
+          <label for="filter_date_end" style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 0.5rem;">
+            📅 Bitiş Tarihi
+          </label>
+          <input type="date" id="filter_date_end" name="filter_date_end" value="{{ filters['DateEnd'] }}" 
+                 style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;">
+        </div>
+        <div class="filter-group">
+          <label for="filter_shipping_type" style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 0.5rem;">
+            🚢 Gönderim Tipi
+          </label>
+          <select id="filter_shipping_type" name="filter_shipping_type" 
+                  style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s; background: white;">
+            <option value="">Tümü</option>
+            <option value="asn" {% if filters['ShippingType'] == 'asn' %}selected{% endif %}>ASN</option>
+            <option value="irsaliye" {% if filters['ShippingType'] == 'irsaliye' %}selected{% endif %}>İrsaliye</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Diğer Filtreler -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.875rem; margin-bottom: 1.25rem;">
+        <input type="text" name="filter_sefer_no" placeholder="🚚 Sefer No" value="{{ filters['SeferNumarasi'] }}" 
+               style="padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;">
+        <input type="text" name="filter_plaka" placeholder="🚗 Plaka" value="{{ filters['PlakaNo'] }}" 
+               style="padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;">
+        <input type="text" name="filter_dolly" placeholder="📦 Dolly No" value="{{ filters['DollyNo'] }}" 
+               style="padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;">
+        <input type="text" name="filter_dolly_order" placeholder="🔢 Dolly Order No" value="{{ filters['DollyOrderNo'] }}" 
+               style="padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;">
+        <input type="text" name="filter_vin" placeholder="🏷️ VIN" value="{{ filters['VinNo'] }}" 
+               style="padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;">
+        <input type="text" name="filter_customer" placeholder="👤 Müşteri Ref" value="{{ filters['CustomerReferans'] }}" 
+               style="padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;">
+        <input type="text" name="filter_eol" placeholder="🏭 EOL" value="{{ filters['EOLName'] }}" 
+               style="padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;">
+        <input type="text" name="filter_eol_id" placeholder="🆔 EOL ID" value="{{ filters['EOLID'] }}" 
+               style="padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;">
+        <input type="text" name="filter_terminal_user" placeholder="👨‍💻 Terminal User" value="{{ filters['TerminalUser'] }}" 
+               style="padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;">
+        <input type="text" name="filter_veri_giris" placeholder="✍️ Veri Giriş User" value="{{ filters['VeriGirisUser'] }}" 
+               style="padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;">
+        <input type="text" name="filter_part_number" placeholder="🔧 Part Number" value="{{ filters['PartNumber'] }}" 
+               style="padding: 0.625rem 0.875rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s;">
+      </div>
+
+      <!-- Aksiyon Butonları -->
+      <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Filtreyi Uygula
+        </button>
+        <a href="{{ url_for('dashboard.sefer_history') }}" class="btn btn-light" style="padding: 0.75rem 1.5rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+          Temizle
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <style>
+    #filterPanel input[type="text"]:focus,
+    #filterPanel input[type="date"]:focus,
+    #filterPanel select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    #filterPanel input[type="text"]:hover,
+    #filterPanel input[type="date"]:hover,
+    #filterPanel select:hover {
+      border-color: #9ca3af;
+    }
+
+    #filterPanel input[type="text"]::placeholder {
+      color: #9ca3af;
+    }
+
+    .filter-group label {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    @media (max-width: 768px) {
+      #filterPanel > form > div {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+  {% if grouped_records %}
+    {% for part_number, recs in grouped_records|reverse %}
+    <details class="group-panel">
+      <summary>
+        <div class="group-summary">
+          <div>
+            <strong>Parça:</strong> {{ highlight(part_number, filters['PartNumber']) }}
+          </div>
+          <div class="chip">{{ recs|length }} kayıt</div>
+          <div>
+            <a class="btn btn-primary btn-sm" href="{{ url_for('dashboard.sefer_history_export', part_number=part_number) }}">
+              ⬇️ Excel
+            </a>
+          </div>
+        </div>
+      </summary>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Sefer No</th>
+              <th>Plaka</th>
+              <th>Dolly Unıq No</th>
+              <th>Dolly Order</th>
+              <th>VIN</th>
+              <th>Müşteri Ref</th>
+              <th>Adet</th>
+              <th>EOL</th>
+              <th>EOL ID</th>
+              <th>EOL Tarihi</th>
+              <th>Terminal User</th>
+              <th>Terminal Tarihi</th>
+              <th>Veri Giriş</th>
+              <th>ASN Tarihi</th>
+              <th>İrsaliye Tarihi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for rec in recs|reverse %}
+            <tr>
+              <td>{{ highlight(rec.SeferNumarasi, filters['SeferNumarasi']) }}</td>
+              <td>{{ highlight(rec.PlakaNo, filters['PlakaNo']) }}</td>
+              <td><strong>{{ highlight(rec.DollyNo, filters['DollyNo']) }}</strong></td>
+              <td>{{ highlight(rec.DollyOrderNo, filters['DollyOrderNo']) }}</td>
+              <td>{{ highlight(rec.VinNo, filters['VinNo']) }}</td>
+              <td>{{ highlight(rec.CustomerReferans, filters['CustomerReferans']) }}</td>
+              <td>{{ rec.Adet or '-' }}</td>
+              <td>{{ highlight(rec.EOLName, filters['EOLName']) }}</td>
+              <td>{{ highlight(rec.EOLID, filters['EOLID']) }}</td>
+              <td>{{ rec.EOLDate.strftime('%d.%m.%Y %H:%M:%S') if rec.EOLDate else '-' }}</td>
+              <td>{{ highlight(rec.TerminalUser, filters['TerminalUser']) }}</td>
+              <td>{{ rec.TerminalDate.strftime('%d.%m.%Y %H:%M:%S') if rec.TerminalDate else '-' }}</td>
+              <td>{{ highlight(rec.VeriGirisUser, filters['VeriGirisUser']) }}</td>
+              <td>{{ rec.ASNDate.strftime('%d.%m.%Y %H:%M:%S') if rec.ASNDate else '-' }}</td>
+              <td>{{ rec.IrsaliyeDate.strftime('%d.%m.%Y %H:%M:%S') if rec.IrsaliyeDate else '-' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+    {% endfor %}
+  {% else %}
+    <div class="empty">Kayıt bulunamadı.</div>
+  {% endif %}
+
+  {% if part_pagination and part_pagination.total_pages > 1 %}
+  <div class="pagination">
+    {% if part_pagination.has_prev %}
+      <a href="{{ url_for('dashboard.sefer_history', part_page=1) }}" class="page-link">« İlk</a>
+      <a href="{{ url_for('dashboard.sefer_history', part_page=part_pagination.page-1) }}" class="page-link">‹ Önceki</a>
+    {% else %}
+      <span class="page-link disabled">« İlk</span>
+      <span class="page-link disabled">‹ Önceki</span>
+    {% endif %}
+
+    <span class="page-info">Parça sayfa {{ part_pagination.page }} / {{ part_pagination.total_pages }}</span>
+
+    {% if part_pagination.has_next %}
+      <a href="{{ url_for('dashboard.sefer_history', part_page=part_pagination.page+1) }}" class="page-link">Sonraki ›</a>
+      <a href="{{ url_for('dashboard.sefer_history', part_page=part_pagination.total_pages) }}" class="page-link">Son »</a>
+    {% else %}
+      <span class="page-link disabled">Sonraki ›</span>
+      <span class="page-link disabled">Son »</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+
+<style>
+.table-responsive {
+  overflow-x: auto;
+}
+table th, table td {
+  white-space: nowrap;
+}
+.group-panel {
+  margin-bottom: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: #fbfbfb;
+}
+.group-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+}
+.chip {
+  display: inline-block;
+  padding: 4px 10px;
+  background: #e7f3ff;
+  color: #1976D2;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 12px;
+}
+.empty {
+  text-align: center;
+  color: #999;
+  padding: 20px;
+}
+.hit {
+  color: #d32f2f;
+  font-weight: 700;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const btn = document.getElementById('toggleFilterBtn');
+  const panel = document.getElementById('filterPanel');
+  btn.onclick = function() {
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  };
+});
+</script>
+
+{% endblock %}

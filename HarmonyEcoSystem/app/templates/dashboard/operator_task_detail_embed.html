@@ -1,0 +1,3159 @@
+<!-- Embed-friendly template without full HTML structure -->
+<div style="margin-bottom: 1rem;">
+    <div style="font-size: 0.75rem; color: #6b7280; margin-bottom: 0.25rem;">Part Number</div>
+    <div style="font-size: 0.9rem; font-weight: 600; color: #1f2937;">{{ task.part_number }}</div>
+</div>
+
+{% if message %}
+<div class="alert alert-success">{{ message }}</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="task-content">
+    <div class="dolly-management-panel">
+        {% set active_entries = task.hold_entries | selectattr('status', 'ne', 'removed') | list %}
+        <!-- Excel Style Dolly List -->
+        <div class="excel-section-header">
+            <div>
+                <p class="section-eyebrow">Harmony Magna</p>
+                <h2>Dolly Listesi</h2>
+            </div>
+            <div class="section-actions">
+                <span class="item-count">
+                    {% if dolly_list %}
+                        {{ dolly_list|length }} Dolly
+                    {% else %}
+                        0 Dolly
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="card excel-card">
+            <div class="card-header excel-card-header">
+                <p>Excel görünümünde kayıt takibi</p>
+            </div>
+
+            {% if dolly_list %}
+            <div class="excel-table-wrapper" id="excelTableWrapper">
+                <table class="excel-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Dolly No</th>
+                            <th>Adet</th>
+                            <th>Durum</th>
+                            <th>İstasyon</th>
+                            <th>Müşteri No</th>
+                            <th>Detay</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dolly in dolly_list %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ dolly.dolly_order_no }}</strong> <small style="color:#999;">(D:{{ dolly.dolly_no }})</small></td>
+                            <td>
+                                <span class="badge badge-primary">{{ dolly.vin_count }} VIN</span>
+                            </td>
+                            <td>
+                                <span class="status-dot status-{{ dolly.status }}" title="{{ dolly.status.replace('_',' ').title() }}"></span>
+                            </td>
+                            <td>{{ dolly.eol_name or '-' }}</td>
+                            <td>{{ dolly.customer_referans or '-' }}</td>
+                            <td>
+                                <button type="button" class="vin-toggle" onclick="toggleVinBreakdown(this, {{ loop.index }})">
+                                    VIN'leri Göster
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="vin-breakdown-row" id="vinBreakdown{{ loop.index }}" style="display: none;">
+                            <td colspan="7">
+                                <div class="vin-breakdown-container">
+                                    <h4>{{ dolly.dolly_no }} - VIN Kırılımı ({{ dolly.vin_count }} adet)</h4>
+                                    <table class="vin-breakdown-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Sıra</th>
+                                                <th>VIN No</th>
+                                                <th>Durum</th>
+                                                <th>EOL</th>
+                                                <th>Customer</th>
+                                                <th>Adet</th>
+                                                <th>Tarih</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for vin_entry in dolly.vin_entries %}
+                                            <tr>
+                                                <td>{{ loop.index }}</td>
+                                                <td><code>{{ vin_entry.vin_no }}</code></td>
+                                                <td>
+                                                    <span class="status-dot status-{{ vin_entry.status }}" title="{{ vin_entry.status.replace('_',' ').title() }}"></span>
+                                                </td>
+                                                <td>{{ vin_entry.eol_name or '-' }}</td>
+                                                <td>{{ vin_entry.customer_referans or '-' }}</td>
+                                                <td>{{ vin_entry.adet or '1' }}</td>
+                                                <td>
+                                                    {% if vin_entry.submitted_at %}
+                                                    {{ vin_entry.submitted_at|local_dt }}
+                                                    {% else %}
+                                                    -
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-vin-list">
+                <p>Henüz dolly eklenmemiş.</p>
+            </div>
+            {% endif %}
+
+            {% if task.status != "completed" %}
+            <div class="inline-input-grid inline-under-table">
+                <div class="form-group">
+                    <label for="sefer_no_input">Sefer No</label>
+                    <input type="text" id="sefer_no_input" placeholder="S123456">
+                </div>
+                <div class="form-group">
+                    <label for="plaka_no_input">Plaka No</label>
+                    <input type="text" id="plaka_no_input" placeholder="34 M 431"
+                           pattern="^[0-9]{2}\\s?[A-Za-z]{1,3}\\s?[0-9]{1,4}$"
+                           title="Plaka formatı: 2 rakam + 1-3 harf + 1-4 rakam (ör. 34 MAG 0001, 41 M 431)">
+                </div>
+                <div class="form-group">
+                    <label for="irsaliye_no_input">İrsaliye No</label>
+                    <input type="text" id="irsaliye_no_input" placeholder="IRS-2025-001" required>
+                </div>
+                <div class="form-group">
+                    <label for="trip_reason_code_input">Hata Kodu</label>
+                    <select id="trip_reason_code_input" class="trip-reason-select">
+                        <option value="TRC-00" selected>TRC-00: Problemsiz Sefer</option>
+                        <option value="TRC-01">TRC-01: Mezanin Eksikliği</option>
+                        <option value="TRC-02">TRC-02: Araç Gecikmesi</option>
+                        <option value="TRC-03">TRC-03: Dolly Eksikliği</option>
+                        <option value="TRC-04">TRC-04: Tedarikçi Üretim Kaybı</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="lokasyon_input">Lokasyon</label>
+                    <input type="text" id="lokasyon_input" value="GHZNA" readonly style="background: #f3f4f6; cursor: not-allowed;">
+                </div>
+            </div>
+
+            <div class="table-actions">
+<div class="action-button-group">
+                    <button type="button" 
+                            class="btn btn-success" 
+                            id="btnSendASN" 
+                            {% if task.can_submit_asn %}
+                            onclick="sendASNToCEVA()"
+                            {% else %}
+                            disabled 
+                            title="Bu görevde ASN etiketi yok (sadece İRSALİYE)"
+                            style="cursor: not-allowed;"
+                            {% endif %}>
+                        ✅ ASN Gönder (CEVA)
+                    </button>
+                    <button type="button" 
+                            class="btn btn-warning" 
+                            id="btnSendIrsaliye" 
+                            {% if task.can_submit_irsaliye %}
+                            onclick="sendIrsaliyeToSOVOS()"
+                            {% else %}
+                            disabled 
+                            title="Bu görevde İRSALİYE etiketi yok (sadece ASN)"
+                            style="cursor: not-allowed;"
+                            {% endif %}>
+                        📋 İrsaliye Gönder (SOVOS)
+                    </button>
+                    <a href="{{ url_for('dashboard.operator_task_export', part_number=task.part_number) }}" 
+                       class="btn btn-outline excel-btn" 
+                       download 
+                       target="_blank">
+                        📊 Excel İndir
+                    </a>
+                    <button type="button" 
+                            class="btn btn-outline" 
+                            onclick="showVinCopyModal()">
+                        📋 VIN Kopyala
+                    </button>
+            <button type="button" class="btn btn-secondary edit-toggle" id="editToggle" onclick="openEditModalInline()">
+                Düzenle
+            </button>
+                </div>
+            </div>
+
+            <div class="edit-toolbar" id="editToolbar">
+                <button type="button" class="icon-btn" data-action="open-quick-add" title="Yeni Dolly Ekle">+</button>
+                <button type="button" class="icon-btn danger" data-action="open-edit-remove" title="EOL son dolly'i çıkar">−</button>
+                <button type="button" class="icon-btn" data-action="toggle-edit" title="Tabloyu Düzenle">Düzenle</button>
+            </div>
+            {% endif %}
+</div>
+</div>
+</div>
+
+{% if task.status != "completed" %}
+<div class="quick-add-modal" id="quickAddModal">
+    <div class="quick-add-content">
+        <div class="quick-add-header">
+            <div>
+                <p class="section-eyebrow">Hızlı Ekle</p>
+                <h3>Sıradaki Dollyleri Ekle</h3>
+            </div>
+            <button type="button" class="quick-add-close" id="quickAddClose" aria-label="Kapat">Kapat</button>
+        </div>
+        <div class="quick-add-body">
+            <div class="quick-add-column">
+                <h4>Sıradaki Dollyler</h4>
+                {% if next_dollys %}
+                <div class="next-dollys-list compact">
+                    {% for dolly in next_dollys %}
+                    <div class="next-dolly-item">
+                        <div class="dolly-summary">
+                            <div class="dolly-number">{{ dolly.DollyNo }}</div>
+                            <div class="dolly-vin">{{ dolly.VinNo }}</div>
+                            <div class="dolly-details">
+                                <span class="eol-name">{{ dolly.EOLName or 'N/A' }}</span>
+                                <span class="customer-ref">{{ dolly.CustomerReferans or 'N/A' }}</span>
+                            </div>
+                        </div>
+                        <div class="dolly-actions">
+                            <button type="button" class="btn btn-primary btn-sm add-next-dolly" 
+                                    data-dolly="{{ dolly.DollyNo }}" data-vin="{{ dolly.VinNo }}">
+                                Ekle
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-dollys">
+                    <p>Sırada bekleyen dolly yok.</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="quick-add-column">
+                <h4>Manuel Dolly Ekle</h4>
+                <form method="post" action="{{ url_for('dashboard.operator_add_dolly', part_number=task.part_number) }}" class="add-dolly-form" id="manualAddForm">
+                    <input type="hidden" name="sefer_no" id="modal_sefer_no">
+                    <input type="hidden" name="plaka_no" id="modal_plaka_no">
+                    <input type="hidden" name="lokasyon" id="modal_lokasyon">
+                    <div class="form-group">
+                        <label for="dolly_no">Dolly No</label>
+                        <input type="text" id="dolly_no" name="dolly_no" required placeholder="DL-1001">
+                    </div>
+                    <div class="form-group">
+                        <label for="vin_no">VIN No</label>
+                        <input type="text" id="vin_no" name="vin_no" required placeholder="3FA6P0LU6FR100001">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        Ekle
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Inline Edit Modal - Modern Design -->
+<div class="edit-modal-overlay" id="editModal" style="display:none;">
+  <div class="edit-modal-modern">
+    <div class="edit-modal-header-modern">
+      <div>
+        <h3>✏️ Dolly Düzenleme Paneli</h3>
+        <p class="modal-subtitle">Dolly ekle, çıkar veya sıradaki dollylerden seç</p>
+      </div>
+      <button type="button" class="modal-close-modern" onclick="closeEditModalInline()" aria-label="Kapat">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="edit-modal-body-modern">
+      <!-- Sol Panel: Sıradaki Dollyler (Her EOL'deki Son Dolly) -->
+      <div class="edit-panel edit-panel-queue">
+        <div class="panel-header">
+          <h4>📋 Sıradaki Dollyler</h4>
+          <span class="badge badge-info" title="Her EOL'den son dolly">EOL Bazlı</span>
+        </div>
+        
+        {% if next_dollys %}
+        <div class="next-dollys-scroll">
+          {% set ns = namespace(eol_groups={}, dolly_vins={}, all_eols=[]) %}
+          
+          {# Collect all unique EOLs first #}
+          {% for dolly in next_dollys %}
+            {% set eol = dolly.EOLName or 'UNKNOWN' %}
+            {% if eol not in ns.all_eols %}
+              {% set _ = ns.all_eols.append(eol) %}
+            {% endif %}
+          {% endfor %}
+          
+          {# DEBUG: Log summary #}
+          <script>
+            console.log('📦 Total dollys:', {{ next_dollys | length }});
+            console.log('🏷️ Unique EOLs found:', {{ ns.all_eols | tojson | safe }});
+          </script>
+          
+          {# First pass: Collect all VINs for each unique (DollyNo, EOL) pair #}
+          {% for dolly in next_dollys %}
+            {% set eol = dolly.EOLName or 'UNKNOWN' %}
+            {% set dolly_key = dolly.DollyNo ~ '|||' ~ eol %}
+            {% if dolly_key not in ns.dolly_vins %}
+              {% set _ = ns.dolly_vins.update({dolly_key: {
+                'dolly_no': dolly.DollyNo,
+                'dollies': [], 
+                'vins': [], 
+                'eol': eol, 
+                'customer': dolly.CustomerReferans, 
+                'order_no': dolly.DollyOrderNo
+              }}) %}
+            {% endif %}
+            {% set _ = ns.dolly_vins[dolly_key]['dollies'].append(dolly) %}
+            {% set _ = ns.dolly_vins[dolly_key]['vins'].append(dolly.VinNo) %}
+          {% endfor %}
+          
+          {# Second pass: Group by EOL #}
+          {% for dolly_key, dolly_data in ns.dolly_vins.items() %}
+            {% set eol = dolly_data.eol %}
+            {% if eol not in ns.eol_groups %}
+              {% set _ = ns.eol_groups.update({eol: []}) %}
+            {% endif %}
+            {% set _ = ns.eol_groups[eol].append(dolly_data) %}
+          {% endfor %}
+          
+          {# DEBUG: Log grouped data and find missing EOLs #}
+          {% set grouped_eols = ns.eol_groups.keys() | list %}
+          {% set missing_eols = [] %}
+          {% for eol in ns.all_eols %}
+            {% if eol not in grouped_eols %}
+              {% set _ = missing_eols.append(eol) %}
+            {% endif %}
+          {% endfor %}
+          <script>
+            console.log('📊 EOL Groups after processing:', {{ grouped_eols | tojson | safe }});
+            console.log('⚠️ Missing EOLs:', {{ missing_eols | tojson | safe }});
+            console.log('🔍 Dolly-VIN pairs count:', {{ ns.dolly_vins | length }});
+          </script>
+          
+          {# Show only last dolly from each EOL (sorted by DollyNo) #}
+          {% for eol_name in ns.eol_groups.keys() | sort %}
+            {% set eol_dolly_list = ns.eol_groups[eol_name] %}
+            {# ✅ Bu EOL'deki TOPLAM benzersiz dolly sayısını hesapla #}
+            {% set total_dollys_in_eol = eol_dolly_list | length %}
+            
+            {# Sort by DollyNo and get last #}
+            {% set sorted_dollies = eol_dolly_list | sort(attribute='dolly_no') %}
+            {% set last_dolly_data = sorted_dollies[-1] %}
+            {% set dolly_no = last_dolly_data.dolly_no %}
+            {% set all_vins = last_dolly_data.vins %}
+            {% set first_vin = all_vins[0] if all_vins else 'N/A' %}
+            {% set last_vin = all_vins[-1] if all_vins else 'N/A' %}
+            
+            <div class="dolly-card dolly-card-last-in-eol">
+              <div class="dolly-card-header">
+                <span class="dolly-badge">{{ dolly_no }}</span>
+                <span class="order-badge" title="Dolly Order No">{{ last_dolly_data.order_no or '?' }}</span>
+              </div>
+              <div class="dolly-card-body">
+                <div class="info-row">
+                  <span class="info-label">İlk VIN:</span>
+                  <span class="info-value vin-compact" title="{{ first_vin }}">{{ first_vin[:8] }}...{{ first_vin[-4:] if first_vin|length > 12 else first_vin }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Son VIN:</span>
+                  <span class="info-value vin-compact" title="{{ last_vin }}">{{ last_vin[:8] }}...{{ last_vin[-4:] if last_vin|length > 12 else last_vin }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">EOL:</span>
+                  <span class="info-value eol-highlight">{{ eol_name }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Müşteri:</span>
+                  <span class="info-value">{{ last_dolly_data.customer or 'N/A' }}</span>
+                </div>
+                <div class="info-row eol-count-badge">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                  </svg>
+                  <span class="info-value">Sırada {{ total_dollys_in_eol }} dolly var, bu dolly'de {{ all_vins|length }} VIN</span>
+                </div>
+              </div>
+              <div class="dolly-card-actions">
+                <button type="button" class="btn-view-vins" onclick='showDollyVins({{ dolly_no | tojson }}, {{ eol_name | tojson }}, {{ all_vins | tojson }})'>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  VIN'leri Göster ({{ all_vins|length }})
+                </button>
+                <button type="button" class="btn-add-queue add-next-dolly"
+                        onclick="handleAddDollyClick(this)"
+                        data-dolly="{{ dolly_no }}" 
+                        data-vin="{{ first_vin }}"
+                        data-eol="{{ eol_name }}"
+                        data-customer="{{ last_dolly_data.customer or '' }}"
+                        data-order="{{ last_dolly_data.order_no or '' }}">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                  Ekle
+                </button>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="queue-summary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4M12 8h.01"/>
+          </svg>
+          <span>Toplam {{ next_dollys|length }} dolly, {{ ns.eol_groups|length }} farklı EOL</span>
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+          <p>Sırada bekleyen dolly yok</p>
+        </div>
+        {% endif %}
+      </div>
+      
+      <!-- Sağ Panel: Dolly Çıkar -->
+      <div class="edit-panel edit-panel-remove">
+        <div class="panel-header">
+          <h4>🗑️ Dolly Çıkar</h4>
+        </div>
+        
+        <div class="form-modern">
+          <div class="alert-info">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 16v-4M12 8h.01"/>
+            </svg>
+            <p>Sadece <strong>en son eklenen</strong> dolly çıkarılabilir (EOL bazlı).</p>
+          </div>
+          
+          {% if dolly_list %}
+          <div class="dolly-remove-list">
+            {% set ns = namespace(eol_groups={}) %}
+            {% for dolly in dolly_list %}
+              {% set eol = dolly.eol_name or 'UNKNOWN' %}
+              {% if eol not in ns.eol_groups %}
+                {% set _ = ns.eol_groups.update({eol: []}) %}
+              {% endif %}
+              {% set _ = ns.eol_groups[eol].append(dolly) %}
+            {% endfor %}
+            
+            {% for dolly in dolly_list %}
+            {% set eol = dolly.eol_name or 'UNKNOWN' %}
+            {% set is_last_in_eol = (ns.eol_groups[eol][-1].dolly_no == dolly.dolly_no) %}
+            <div class="dolly-remove-card {% if is_last_in_eol %}removable{% else %}locked{% endif %}" data-dolly-no="{{ dolly.dolly_no }}" data-eol="{{ eol }}">
+              <div class="dolly-remove-info">
+                <div class="dolly-remove-badge">{{ dolly.dolly_order_no or dolly.dolly_no }}</div>
+                <div class="dolly-remove-details">
+                  <span class="eol-tag">{{ eol }}</span>
+                  <span class="vin-count">{{ dolly.vin_count }} VIN</span>
+                </div>
+              </div>
+              {% if is_last_in_eol %}
+              <button type="button" class="btn-remove-dolly" onclick="confirmRemoveDolly('{{ dolly.dolly_no }}', '{{ eol }}', '{{ dolly.dolly_order_no or dolly.dolly_no }}')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                </svg>
+                Çıkar
+              </button>
+              {% else %}
+              <div class="locked-indicator" title="Sadece EOL'daki son dolly çıkarılabilir">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0110 0v4"/>
+                </svg>
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            <p>Henüz dolly eklenmemiş</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+
+<style>
+/* ========== MODERN EDIT MODAL STYLES ========== */
+.edit-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.edit-modal-modern {
+    background: white;
+    border-radius: 20px;
+    max-width: 1400px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.edit-modal-header-modern {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 2rem 2.5rem;
+    border-bottom: 2px solid #e5e7eb;
+    background: linear-gradient(135deg, #DA291C 0%, #b02117 100%);
+    color: #FFFFFF;
+    border-radius: 20px 20px 0 0;
+}
+
+.edit-modal-header-modern h3 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-subtitle {
+    margin: 0.5rem 0 0 0;
+    font-size: 0.95rem;
+    opacity: 0.9;
+    font-weight: 400;
+}
+
+.modal-close-modern {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: #FFFFFF;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.modal-close-modern:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+.edit-modal-body-modern {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 2rem;
+    padding: 2rem 2.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.edit-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.panel-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #000000;
+}
+
+.badge-info {
+    background: #f3f4f6;
+    color: #888B8D;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid #888B8D;
+}
+
+/* Sıradaki Dollyler Panel */
+.next-dollys-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 600px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.next-dollys-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.next-dollys-scroll::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 3px;
+}
+
+.next-dollys-scroll::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+}
+
+.next-dollys-scroll::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+.dolly-card {
+    background: #f9fafb;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.2s;
+}
+
+.dolly-card:hover {
+    border-color: #DA291C;
+    box-shadow: 0 4px 12px rgba(218, 41, 28, 0.15);
+    transform: translateY(-2px);
+}
+
+.dolly-card-header {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.dolly-badge {
+    background: linear-gradient(135deg, #DA291C, #b02117);
+    color: #FFFFFF;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.order-badge {
+    background: linear-gradient(135deg, #888B8D, #666);
+    color: #FFFFFF;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.order-badge::before {
+    content: '#';
+    opacity: 0.8;
+}
+
+.dolly-card-last-in-eol {
+    border-left: 4px solid #DA291C;
+    background: linear-gradient(to right, rgba(218, 41, 28, 0.02), white);
+}
+
+.eol-highlight {
+    color: #DA291C !important;
+    font-weight: 700 !important;
+}
+
+.eol-count-badge {
+    background: #fff5f5;
+    border: 1px solid rgba(218, 41, 28, 0.2);
+    border-radius: 6px;
+    padding: 0.5rem;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.eol-count-badge svg {
+    color: #DA291C;
+    flex-shrink: 0;
+}
+
+.eol-count-badge .info-value {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #666;
+}
+
+.queue-summary {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.queue-summary svg {
+    color: #888B8D;
+    flex-shrink: 0;
+}
+
+.vin-badge {
+    background: #f3f4f6;
+    color: #000000;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: monospace;
+    border: 1px solid #888B8D;
+}
+
+.dolly-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+}
+
+.info-label {
+    color: #888B8D;
+    font-weight: 500;
+}
+
+.info-value {
+    color: #000000;
+    font-weight: 600;
+}
+
+.vin-compact {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.dolly-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.btn-view-vins {
+    flex: 1;
+    background: linear-gradient(135deg, #888B8D, #666);
+    color: #FFFFFF;
+    border: none;
+    padding: 0.65rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.btn-view-vins:hover {
+    background: linear-gradient(135deg, #666, #888B8D);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(136, 139, 141, 0.3);
+}
+
+.btn-add-queue {
+    flex: 1.5;
+    background: linear-gradient(135deg, #DA291C, #b02117);
+    color: #FFFFFF;
+    border: none;
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.btn-add-queue:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(218, 41, 28, 0.3);
+    background: linear-gradient(135deg, #b02117, #DA291C);
+}
+
+.btn-add-queue:active {
+    transform: translateY(0);
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    color: #9ca3af;
+    text-align: center;
+}
+
+.empty-state svg {
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+/* Form Modern Styles */
+.form-modern {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-grid-modern {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-field-full {
+    grid-column: 1 / -1;
+}
+
+.field-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #000000;
+}
+
+.required {
+    color: #DA291C;
+}
+
+.field-input,
+.field-select {
+    padding: 0.75rem;
+    border: 2px solid #888B8D;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    background: #FFFFFF;
+    color: #000000;
+}
+
+.field-input:focus,
+.field-select:focus {
+    outline: none;
+    border-color: #DA291C;
+    box-shadow: 0 0 0 3px rgba(218, 41, 28, 0.1);
+}
+
+.field-input[readonly] {
+    background: #f3f4f6;
+    cursor: not-allowed;
+}
+
+.btn-primary-modern,
+.btn-danger-modern {
+    padding: 1rem;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.btn-primary-modern {
+    background: linear-gradient(135deg, #DA291C, #b02117);
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(218, 41, 28, 0.3);
+}
+
+.btn-primary-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(218, 41, 28, 0.4);
+    background: linear-gradient(135deg, #b02117, #DA291C);
+}
+
+.btn-danger-modern {
+    background: linear-gradient(135deg, #000000, #333333);
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-danger-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    background: linear-gradient(135deg, #333333, #000000);
+}
+
+.btn-full {
+    width: 100%;
+}
+
+/* Auto-fill Button */
+.btn-auto-fill {
+    background: linear-gradient(135deg, #888B8D, #666);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-auto-fill:hover {
+    background: linear-gradient(135deg, #666, #888B8D);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(136, 139, 141, 0.4);
+}
+
+.btn-auto-fill svg {
+    animation: rotate360 0.6s ease;
+}
+
+@keyframes rotate360 {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Alert Info */
+.alert-info {
+    background: #fff5f5;
+    border: 2px solid #DA291C;
+    border-radius: 10px;
+    padding: 1rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+}
+
+.alert-info svg {
+    flex-shrink: 0;
+    color: #DA291C;
+}
+
+.alert-info p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #000000;
+    line-height: 1.5;
+}
+
+/* Dolly Remove List */
+.dolly-remove-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 600px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.dolly-remove-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dolly-remove-list::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 3px;
+}
+
+.dolly-remove-list::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+}
+
+.dolly-remove-card {
+    background: #f9fafb;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.dolly-remove-card.removable {
+    border-color: #DA291C;
+    background: #fff5f5;
+}
+
+.dolly-remove-card.removable:hover {
+    border-color: #b02117;
+    box-shadow: 0 4px 12px rgba(218, 41, 28, 0.15);
+    transform: translateY(-2px);
+}
+
+.dolly-remove-card.locked {
+    opacity: 0.6;
+    background: #f3f4f6;
+}
+
+.dolly-remove-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.dolly-remove-badge {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #000000;
+}
+
+.dolly-remove-details {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.eol-tag {
+    background: #e5e7eb;
+    color: #374151;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.dolly-remove-card.removable .eol-tag {
+    background: #DA291C;
+    color: #FFFFFF;
+}
+
+.vin-count {
+    font-size: 0.75rem;
+    color: #888B8D;
+    font-weight: 600;
+}
+
+.btn-remove-dolly {
+    background: linear-gradient(135deg, #000000, #333333);
+    color: #FFFFFF;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+}
+
+.btn-remove-dolly:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(135deg, #333333, #000000);
+}
+
+.locked-indicator {
+    color: #888B8D;
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .edit-modal-body-modern {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+    
+    .edit-panel {
+        max-width: 100%;
+    }
+}
+
+.task-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    padding: 0.6rem 1rem;
+    background: linear-gradient(135deg, #DA291C 0%, #b02117 100%);
+    color: #FFFFFF;
+    border-radius: 8px;
+}
+
+.header-content {
+    flex: 1;
+}
+
+.task-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.4rem;
+}
+
+.task-title h1 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.task-progress {
+    max-width: 300px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #10b981;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+.task-status {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.task-content {
+    display: block;
+}
+
+.task-info-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.info-grid {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #6b7280;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.info-value {
+    color: #1f2933;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.shipping-tag {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.tag-asn { background-color: #ecfccb; color: #365314; }
+.tag-irsaliye { background-color: #fecaca; color: #991b1b; }
+.tag-both { background-color: #e0e7ff; color: #3730a3; }
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.btn-submit {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    font-weight: 600;
+    text-align: left;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-icon {
+    font-size: 1.2rem;
+}
+
+.add-dolly-form {
+    padding: 1rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 1rem;
+    align-items: end;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #4298B5;
+    box-shadow: 0 0 0 3px rgba(66, 152, 181, 0.1);
+}
+
+/* Excel style table */
+.excel-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 1rem;
+}
+
+.section-eyebrow {
+    margin: 0;
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.excel-section-header h2 {
+    margin: 0.2rem 0 0;
+}
+
+.section-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.excel-card-header p {
+    margin: 0.2rem 0 0;
+    color: #6b7280;
+}
+
+.inline-input-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+    align-items: end;
+}
+
+.inline-under-table {
+    margin: 1rem 0 0.5rem;
+}
+
+.inline-input-grid .form-group {
+    margin-bottom: 0;
+}
+
+.inline-input-grid input {
+    background: rgba(15, 23, 42, 0.02);
+}
+
+.excel-table-wrapper {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    /* BACKUP: overflow-x: auto; max-height: 70vh; overflow-y: auto; */
+    overflow: visible;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+.excel-table-wrapper.is-editable {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.excel-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    min-width: 900px;
+}
+
+.excel-table th,
+.excel-table td {
+    padding: 0.6rem 0.85rem;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+.excel-table th {
+    background: #f8fafc;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+    font-weight: 600;
+}
+
+.excel-table tbody tr:nth-child(even) {
+    background: #fdfdfd;
+}
+
+.excel-table tbody tr:hover {
+    background: #eff6ff;
+}
+
+.vin-toggle {
+    border: 1px solid rgba(66, 152, 181, 0.3);
+    background: rgba(66, 152, 181, 0.08);
+    color: #2c6b82;
+    border-radius: 999px;
+    padding: 0.25rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.vin-toggle:hover {
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.vin-breakdown-row {
+    background: #f8fafc !important;
+}
+
+.vin-breakdown-container {
+    padding: 1.5rem;
+    background: white;
+    border-radius: 8px;
+    margin: 0;
+    box-shadow: inset 0 0 0 1px #e5e7eb;
+    /* BACKUP: max-width: 100%; overflow-x: auto; */
+    width: 100%;
+    overflow: visible;
+}
+
+.vin-breakdown-container h4 {
+    margin: 0 0 1rem 0;
+    color: #1f2937;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.vin-breakdown-table {
+    width: 100%;
+    /* BACKUP: min-width: 800px; table-layout: auto; */
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    table-layout: fixed;
+}
+
+.vin-breakdown-table th {
+    background: #f1f5f9;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    font-size: 0.7rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+/* Column widths for VIN breakdown table */
+.vin-breakdown-table th:nth-child(1),
+.vin-breakdown-table td:nth-child(1) { width: 5%; }  /* Sıra */
+.vin-breakdown-table th:nth-child(2),
+.vin-breakdown-table td:nth-child(2) { width: 30%; } /* VIN No */
+.vin-breakdown-table th:nth-child(3),
+.vin-breakdown-table td:nth-child(3) { width: 8%; }  /* Durum */
+.vin-breakdown-table th:nth-child(4),
+.vin-breakdown-table td:nth-child(4) { width: 17%; } /* EOL */
+.vin-breakdown-table th:nth-child(5),
+.vin-breakdown-table td:nth-child(5) { width: 17%; } /* Customer */
+.vin-breakdown-table th:nth-child(6),
+.vin-breakdown-table td:nth-child(6) { width: 8%; }  /* Adet */
+.vin-breakdown-table th:nth-child(7),
+.vin-breakdown-table td:nth-child(7) { width: 15%; } /* Tarih */
+
+.vin-breakdown-table td {
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vin-breakdown-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.vin-breakdown-table code {
+    background: #f1f5f9;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: #1e40af;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.35rem 0.85rem;
+    border-radius: 16px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.badge-primary {
+    background: rgba(66, 152, 181, 0.12);
+    color: #2c6b82;
+}
+
+.status-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    cursor: help;
+}
+
+.status-dot.status-scan_captured {
+    background: #f59e0b;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.status-dot.status-waiting_operator,
+.status-dot.status-waiting_submit,
+.status-dot.status-pending {
+    background: #4298B5;
+    box-shadow: 0 0 0 2px rgba(66, 152, 181, 0.2);
+}
+
+.status-dot.status-completed {
+    background: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.status-dot.status-error,
+.status-dot.status-removed {
+    background: #ef4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.table-status {
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+}
+
+.table-status.status-scan_captured {
+    background: rgba(245, 158, 11, 0.15);
+    color: #b45309;
+}
+
+.table-status.status-waiting_operator,
+.table-status.status-waiting_submit {
+    background: rgba(66, 152, 181, 0.15);
+    color: #2c6b82;
+}
+
+.table-status.status-completed {
+    background: rgba(16, 185, 129, 0.15);
+    color: #047857;
+}
+
+.table-actions {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.action-button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.action-button-group form {
+    display: inline;
+}
+
+.action-button-group .btn {
+    min-width: 150px;
+    border-radius: 999px;
+    padding: 0.65rem 1.6rem;
+    font-weight: 600;
+    font-size: 0.92rem;
+    box-shadow: 0 6px 12px rgba(15, 23, 42, 0.12);
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.btn-outline,
+.btn-secondary {
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    color: #1f293b;
+}
+
+.btn-outline:hover,
+.btn-secondary:hover {
+    background: rgba(66, 152, 181, 0.08);
+    color: #2c6b82;
+}
+
+.action-button-group .btn-success {
+    background: linear-gradient(120deg, #059669, #10b981);
+    border: none;
+    color: #fff;
+}
+
+.action-button-group .btn-success:disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.action-button-group .btn-warning {
+    background: linear-gradient(120deg, #f97316, #f59e0b);
+    border: none;
+    color: #fff;
+}
+
+.action-button-group .btn-warning:disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.action-button-group .btn-success:hover:not(:disabled),
+.action-button-group .btn-warning:hover:not(:disabled) {
+    filter: brightness(1.05);
+}
+
+.edit-toolbar {
+    display: none;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.edit-toolbar.is-visible {
+    display: inline-flex;
+}
+
+.icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.icon-btn:hover {
+    background: #f8fafc;
+    transform: translateY(-1px);
+}
+
+.icon-btn.danger {
+    border-color: rgba(220, 38, 38, 0.4);
+    color: #dc2626;
+}
+
+.quick-add-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 7, 18, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    z-index: 100;
+}
+
+.quick-add-modal.is-visible {
+    display: flex;
+}
+
+.quick-add-content {
+    background: #fff;
+    border-radius: 20px;
+    width: min(960px, 100%);
+    box-shadow: 0 30px 60px rgba(15, 23, 42, 0.25);
+    padding: 2rem;
+}
+
+.quick-add-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.quick-add-header h3 {
+    margin: 0.2rem 0 0;
+}
+
+.quick-add-close {
+    border: none;
+    background: rgba(15, 23, 42, 0.05);
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    font-size: 1.4rem;
+    cursor: pointer;
+}
+
+.quick-add-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+}
+
+.quick-add-column {
+    background: rgba(15, 23, 42, 0.015);
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    border-radius: 16px;
+    padding: 1.25rem;
+}
+
+.quick-add-column h4 {
+    margin: 0 0 1rem;
+}
+
+.next-dollys-list.compact {
+    max-height: 320px;
+}
+
+.empty-vin-list {
+    text-align: center;
+    padding: 2rem;
+    color: #6b7280;
+    font-style: italic;
+    border: 1px dashed #d1d5db;
+    border-radius: 12px;
+}
+
+.item-count {
+    background: #f3f4f6;
+    color: #374151;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.next-dollys-list {
+    padding: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.next-dolly-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    border: 1px solid #e5e8f0;
+    border-radius: 6px;
+    background: #fafbfc;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.next-dolly-item:hover {
+    background: #f0f9ff;
+    border-color: #4298B5;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(66, 152, 181, 0.1);
+}
+
+.dolly-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.dolly-number {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #1f2937;
+}
+
+.dolly-vin {
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.dolly-details {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.dolly-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.add-next-dolly {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    border-radius: 6px;
+    background: #4298B5;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.add-next-dolly:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.empty-dollys {
+    text-align: center;
+    padding: 2rem;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.alert-success {
+    background-color: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.alert-error {
+    background-color: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+/* Edit modal */
+.edit-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+}
+.edit-modal {
+    width: min(1100px, 92vw);
+    max-height: 92vh;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+    display: flex;
+    flex-direction: column;
+}
+.edit-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+.edit-modal-body {
+    padding: 16px 20px 20px;
+    overflow: auto;
+}
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+}
+.modal-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+}
+.modal-column {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px;
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.form-grid label { display: flex; flex-direction: column; font-size: 12px; color: #4b5563; }
+.form-grid input, .modal-column select { padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+.muted { font-size: 12px; color: #6b7280; margin-top: 8px; }
+
+.btn-block {
+    width: 100%;
+}
+
+@media (max-width: 900px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    .edit-modal {
+        width: 95vw;
+    }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .task-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .task-detail-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .vin-breakdown-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    }
+}
+</style>
+
+<script>
+// Inline accessible open/close helpers (onclick fallback)
+function showDollyVins(dollyNo, eolName, vins) {
+    console.log('🔍 showDollyVins called:', { dollyNo, eolName, vins, vinsLength: vins?.length });
+    
+    if (!vins || vins.length === 0) {
+        alert('❌ Bu dolly için VIN bilgisi bulunamadı!');
+        return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.id = 'dollyVinsModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(4px);
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        animation: fadeIn 0.2s ease;
+    `;
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        border-radius: 16px;
+        max-width: 600px;
+        width: 100%;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    `;
+    
+    let vinsHtml = vins.map((vin, idx) => `
+        <div style="padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;" 
+             onmouseover="this.style.background='#f9fafb'" 
+             onmouseout="this.style.background='white'">
+            <span style="color: #888B8D; font-weight: 600; min-width: 40px;">${idx + 1}.</span>
+            <span style="font-family: monospace; font-size: 0.95rem; color: #000; font-weight: 600; flex: 1;">${vin}</span>
+            <button onclick="copyToClipboard('${vin}', this)" 
+                    style="background: linear-gradient(135deg, #888B8D, #666); color: white; border: none; padding: 0.4rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; transition: all 0.2s;"
+                    onmouseover="this.style.transform='translateY(-2px)'"
+                    onmouseout="this.style.transform='translateY(0)'">
+                📋 Kopyala
+            </button>
+        </div>
+    `).join('');
+    
+    content.innerHTML = `
+        <div style="padding: 1.5rem 2rem; border-bottom: 2px solid #e5e7eb; background: linear-gradient(135deg, #DA291C, #b02117); color: white; border-radius: 16px 16px 0 0; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 style="margin: 0; font-size: 1.5rem; font-weight: 700;">🚛 ${dollyNo}</h3>
+                <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.9;">
+                    EOL: ${eolName} • ${vins.length} VIN
+                </p>
+            </div>
+            <button onclick="document.getElementById('dollyVinsModal').remove()" 
+                    style="background: rgba(255,255,255,0.2); border: none; color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div style="flex: 1; overflow-y: auto;">
+            ${vinsHtml}
+        </div>
+        <div style="padding: 1rem 2rem; border-top: 2px solid #e5e7eb; background: #f9fafb; border-radius: 0 0 16px 16px; display: flex; gap: 0.75rem;">
+            <button onclick="copyAllVins(${JSON.stringify(vins)})" 
+                    style="flex: 1; background: linear-gradient(135deg, #888B8D, #666); color: white; border: none; padding: 0.75rem; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s;"
+                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(136,139,141,0.4)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                📋 Tümünü Kopyala (${vins.length})
+            </button>
+            <button onclick="document.getElementById('dollyVinsModal').remove()" 
+                    style="flex: 0.7; background: linear-gradient(135deg, #000, #333); color: white; border: none; padding: 0.75rem; border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s;"
+                    onmouseover="this.style.transform='translateY(-2px)'"
+                    onmouseout="this.style.transform='translateY(0)'">
+                Kapat
+            </button>
+        </div>
+    `;
+    
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+    
+    // Click outside to close
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+function copyToClipboard(text, button) {
+    navigator.clipboard.writeText(text).then(() => {
+        const originalText = button.innerHTML;
+        button.innerHTML = '✅ Kopyalandı';
+        button.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = 'linear-gradient(135deg, #888B8D, #666)';
+        }, 1500);
+    });
+}
+
+function copyAllVins(vins) {
+    const text = vins.join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        button.innerHTML = '✅ Kopyalandı!';
+        button.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = 'linear-gradient(135deg, #888B8D, #666)';
+        }, 1500);
+    });
+}
+
+function openEditModalInline() {
+    const modal = document.getElementById('editModal');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+
+function closeEditModalInline() {
+    const modal = document.getElementById('editModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function confirmRemoveDolly(dollyNo, eolName, dollyOrderNo) {
+    if (!confirm(`⚠️ ${dollyOrderNo} dollyini ${eolName} EOL'undan çıkarmak istediğinizden emin misiniz?\n\n✅ Dolly DollyEOLInfo tablosuna dönecek ve tekrar okutulabilir olacak.\n\nBu işlem geri alınamaz!`)) {
+        return;
+    }
+    
+    const partNumber = '{{ task.part_number }}';
+    
+    // Show loading
+    const buttons = document.querySelectorAll('.btn-remove-dolly');
+    buttons.forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+    });
+    
+    const url = `/operator/task/${encodeURIComponent(partNumber)}/edit/remove`;
+    console.log('🗑️ Removing dolly:', { dollyNo, eolName, url });
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            eol_name: eolName,
+            dolly_no: dollyNo
+        })
+    })
+    .then(r => {
+        console.log('📡 Remove response status:', r.status);
+        return r.json();
+    })
+    .then(data => {
+        console.log('✅ Remove response:', data);
+        if (data.success) {
+            alert('✅ ' + (data.message || 'Dolly başarıyla çıkarıldı ve okutma sırasına döndü!'));
+            location.reload();
+        } else {
+            alert('❌ ' + (data.message || 'Dolly çıkarılamadı!'));
+            buttons.forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            });
+        }
+    })
+    .catch(err => {
+        console.error('❌ Remove error:', err);
+        alert('❌ Hata: ' + err.message);
+        buttons.forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        });
+    });
+}
+
+function isValidPlaka(value) {
+    return /^[0-9]{2}\s?[A-Za-z]{1,3}\s?[0-9]{1,4}$/.test(value || '');
+}
+
+function isValidRegionCode(value) {
+    return /^[0-9]{2}\b/.test(value || '');
+}
+
+// Auto-focus first input
+document.addEventListener('DOMContentLoaded', function() {
+    const seferInput = document.getElementById('sefer_no_input');
+    const plakaInput = document.getElementById('plaka_no_input');
+    const lokasyonInput = document.getElementById('lokasyon_input');
+    const modalSefer = document.getElementById('modal_sefer_no');
+    const modalPlaka = document.getElementById('modal_plaka_no');
+    const modalLokasyon = document.getElementById('modal_lokasyon');
+
+    // ✅ Event listener'ları kaldırdık - artık onclick kullanıyoruz (Safari uyumlu)
+
+    const manualForm = document.getElementById('manualAddForm');
+    manualForm?.addEventListener('submit', (event) => {
+        const seferValue = seferInput?.value.trim();
+        const plakaValue = plakaInput?.value.trim();
+        const lokasyonValue = lokasyonInput?.value.trim() || 'GHZNA';
+
+        if (!seferValue || !plakaValue) {
+            event.preventDefault();
+            alert('Lütfen sefer numarası ve plaka bilgilerini girin.');
+            return;
+        }
+        if (!isValidPlaka(plakaValue)) {
+            event.preventDefault();
+            if (!isValidRegionCode(plakaValue)) {
+                alert('Bölge kodu 2 rakam olmalıdır. Örnek: 34 MAG 0001');
+            } else {
+                alert('Plaka formatı hatalı. Örnek: 34 MAG 0001 veya 41 M 431');
+            }
+            plakaInput?.focus();
+            return;
+        }
+
+        if (modalSefer) modalSefer.value = seferValue;
+        if (modalPlaka) modalPlaka.value = plakaValue;
+        if (modalLokasyon) modalLokasyon.value = lokasyonValue;
+    });
+
+    const dollyInput = document.getElementById('dolly_no');
+    const vinInput = document.getElementById('vin_no');
+    if (dollyInput && vinInput) {
+        dollyInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                vinInput.focus();
+            }
+        });
+        vinInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const submitBtn = manualForm?.querySelector('button[type="submit"]');
+                submitBtn?.click();
+            }
+        });
+    }
+
+    const editToggle = document.getElementById('editToggle');
+    const editToolbar = document.getElementById('editToolbar');
+    const tableWrapper = document.getElementById('excelTableWrapper');
+    const quickAddBtn = document.querySelector('[data-action="open-quick-add"]');
+    const toggleEditBtn = document.querySelector('[data-action="toggle-edit"]');
+    const openRemoveBtn = document.querySelector('[data-action="open-edit-remove"]');
+    const quickAddModal = document.getElementById('quickAddModal');
+    const quickAddClose = document.getElementById('quickAddClose');
+    const editModal = document.getElementById('editModal');
+    const editModalClose = document.querySelector('[data-action="close-edit-modal"]');
+    
+    console.log('🔍 DEBUG: editModal element:', editModal);
+
+    const openEditModal = () => {
+        editToolbar?.classList.add('is-visible');
+        if (editModal) editModal.style.display = 'flex';
+    };
+    const closeEditModal = () => {
+        if (editModal) editModal.style.display = 'none';
+    };
+    editToggle?.addEventListener('click', openEditModal);
+
+    const openQuickAdd = () => {
+        if (!quickAddModal) return;
+        if (modalSefer) modalSefer.value = seferInput?.value.trim() || '';
+        if (modalPlaka) modalPlaka.value = plakaInput?.value.trim() || '';
+        if (modalLokasyon) modalLokasyon.value = lokasyonInput?.value.trim() || 'GHZNA';
+        quickAddModal.classList.add('is-visible');
+        document.getElementById('dolly_no')?.focus();
+    };
+
+    const closeQuickAdd = () => {
+        quickAddModal?.classList.remove('is-visible');
+    };
+
+    quickAddBtn?.addEventListener('click', openQuickAdd);
+    quickAddClose?.addEventListener('click', closeQuickAdd);
+    quickAddModal?.addEventListener('click', (event) => {
+        if (event.target === quickAddModal) {
+            closeQuickAdd();
+        }
+    });
+
+    toggleEditBtn?.addEventListener('click', () => {
+        tableWrapper?.classList.toggle('is-editable');
+    });
+
+    openRemoveBtn?.addEventListener('click', openEditModal);
+    editModalClose?.addEventListener('click', closeEditModal);
+    editModal?.addEventListener('click', (e) => {
+        if (e.target === editModal) closeEditModal();
+    });
+    // ESC ile kapat
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeEditModal();
+            closeEditModalInline();
+        }
+    });
+
+    // Modern modal event listeners
+    // Auto-focus first input when modal opens
+    const editModalModern = document.getElementById('editModal');
+    if (editModalModern) {
+        // Click outside to close
+        editModalModern.addEventListener('click', (e) => {
+            if (e.target === editModalModern) {
+                closeEditModalInline();
+            }
+        });
+    }
+});
+
+// Safari uyumlu - data attribute'lardan oku
+function handleAddDollyClick(button) {
+    var dollyNo = button.getAttribute('data-dolly');
+    var vinNo = button.getAttribute('data-vin');
+    
+    if (confirm(dollyNo + ' dollyini görev listesine eklemek istediğinizden emin misiniz?')) {
+        addNextDolly(dollyNo, vinNo);
+    }
+}
+
+// Function to add next available dolly
+function addNextDolly(dollyNo, vinNo) {
+    var partNumber = '{{ task.part_number }}';
+    
+    // ✅ Dolly eklemede sefer/plaka GEREKMEZ - sadece ASN/İrsaliye gönderiminde gerekir
+    
+    // Disable all add buttons to prevent double clicks
+    var addButtons = document.querySelectorAll('.add-next-dolly');
+    for (var i = 0; i < addButtons.length; i++) {
+        addButtons[i].disabled = true;
+        addButtons[i].style.opacity = '0.5';
+    }
+    
+    var url = '/operator/task/' + encodeURIComponent(partNumber) + '/add-next-dolly/' + encodeURIComponent(dollyNo);
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            // ✅ Dolly eklemede sefer/plaka bilgisi GÖNDERİLMEZ
+        })
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (data.success) {
+            alert('✅ Dolly başarıyla eklendi! Sayfa yenilenecek.');
+            location.reload();
+        } else {
+            alert('❌ ' + (data.message || 'Dolly eklenirken hata oluştu'));
+            // Re-enable buttons
+            for (var i = 0; i < addButtons.length; i++) {
+                addButtons[i].disabled = false;
+                addButtons[i].style.opacity = '1';
+            }
+        }
+    })
+    .catch(function(error) {
+        alert('❌ Dolly eklenirken hata oluştu: ' + error.message);
+        // Re-enable buttons
+        for (var i = 0; i < addButtons.length; i++) {
+            addButtons[i].disabled = false;
+            addButtons[i].style.opacity = '1';
+        }
+    });
+}
+
+// ASN/İrsaliye gönderimini üst girdilerle yap
+// ASN Gönderme Fonksiyonu
+function sendASNToCEVA() {
+    const seferInput = document.getElementById('sefer_no_input');
+    const plakaInput = document.getElementById('plaka_no_input');
+    const irsaliyeInput = document.getElementById('irsaliye_no_input');
+    const tripReasonCodeInput = document.getElementById('trip_reason_code_input');
+    const lokasyonInput = document.getElementById('lokasyon_input');
+    const seferValue = seferInput?.value.trim();
+    const plakaValue = plakaInput?.value.trim();
+    const irsaliyeValue = irsaliyeInput?.value.trim();
+    const tripReasonCodeValue = tripReasonCodeInput?.value || 'TRC-00';
+    const lokasyonValue = (lokasyonInput?.value.trim() || 'GHZNA');
+    const submitBtn = document.getElementById('btnSendASN');
+
+    // Validation
+    if (!seferValue) {
+        alert('❌ Sefer numarası zorunludur!');
+        seferInput?.focus();
+        return false;
+    }
+
+    if (!plakaValue) {
+        alert('❌ Plaka numarası zorunludur!');
+        plakaInput?.focus();
+        return false;
+    }
+    if (!isValidPlaka(plakaValue)) {
+        if (!isValidRegionCode(plakaValue)) {
+            alert('Bölge kodu 2 rakam olmalıdır. Örnek: 34 MAG 0001');
+        } else {
+            alert('Plaka formatı hatalı. Örnek: 34 MAG 0001 veya 41 M 431');
+        }
+        plakaInput?.focus();
+        return false;
+    }
+
+    if (!irsaliyeValue) {
+        alert('❌ İrsaliye numarası zorunludur!');
+        irsaliyeInput?.focus();
+        return false;
+    }
+
+    // Get reason code description
+    const reasonDesc = tripReasonCodeInput?.options[tripReasonCodeInput.selectedIndex]?.text || tripReasonCodeValue;
+
+    // Confirm
+    const confirmMsg = `🚚 CEVA ASN Gönderimi\n\nSefer: ${seferValue}\nPlaka: ${plakaValue}\nİrsaliye: ${irsaliyeValue}\nDurum: ${reasonDesc}\n\n⚠️ Bu işlem CEVA sistemine gönderilecek!\n\nOnaylıyor musunuz?`;
+    if (!confirm(confirmMsg)) {
+        return false;
+    }
+
+    // Show loading overlay
+    showLoadingOverlay('🌐 CEVA ASN gönderiliyor...\n\n⏳ Lütfen bekleyin, işlem tamamlanana kadar ekranı kapatmayın!');
+
+    // Disable button
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '⏳ Gönderiliyor...';
+    }
+
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('sefer_numarasi', seferValue);
+    formData.append('plaka_no', plakaValue);
+    formData.append('irsaliye_no', irsaliyeValue);
+    formData.append('trip_reason_code', tripReasonCodeValue);
+    formData.append('lokasyon', lokasyonValue);
+    formData.append('shipping_type', 'asn');  // ASN tag'li olanları filtrele
+
+    // Send to backend
+    fetch(`/operator/task/{{ task.part_number }}/send-asn`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoadingOverlay();
+
+        if (data.success) {
+            showSuccessModal(
+                '✅ CEVA ASN Başarıyla Gönderildi!',
+                `${data.transferred_count} VIN başarıyla CEVA sistemine gönderildi.\n\nSefer: ${data.sefer_numarasi}\n\n${data.ceva_message || 'İşlem tamamlandı.'}`,
+                () => {
+                    if (window.parent !== window) {
+                        window.parent.location.reload();
+                    } else {
+                        window.location.reload();
+                    }
+                }
+            );
+        } else {
+            showErrorModal(
+                '❌ CEVA ASN Gönderimi Başarısız',
+                data.error || 'Bilinmeyen hata oluştu',
+                data.ceva_message || ''
+            );
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '✅ ASN Gönder (CEVA)';
+            }
+        }
+    })
+    .catch(error => {
+        hideLoadingOverlay();
+        console.error('ASN send error:', error);
+
+        showErrorModal(
+            '❌ Bağlantı Hatası',
+            'Sunucuya bağlanılamadı. Lütfen tekrar deneyin.',
+            error.message
+        );
+
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '✅ ASN Gönder (CEVA)';
+        }
+    });
+
+    return false;
+}
+
+// İrsaliye Gönderme Fonksiyonu (SOVOS - Geliştirme Aşamasında)
+function sendIrsaliyeToSOVOS() {
+    // SOVOS API entegrasyonu henüz tamamlanmadı
+    alert('ℹ️ SOVOS İrsaliye Entegrasyonu\n\nBu özellik şu anda geliştirme aşamasındadır.\n\nSOVOS API bağlantısı tamamlandığında aktif olacaktır.');
+    return false;
+}
+
+// Loading overlay
+function showLoadingOverlay(message) {
+    let overlay = document.getElementById('asnLoadingOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'asnLoadingOverlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(8px);
+        `;
+
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: white;
+            padding: 3rem 4rem;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+            max-width: 500px;
+        `;
+
+        content.innerHTML = `
+            <div class="spinner" style="margin: 0 auto 1.5rem; width: 80px; height: 80px; border: 8px solid #e5e7eb; border-top-color: #DA291C; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <div id="loadingMessage" style="font-size: 1.25rem; font-weight: 700; color: #1f2937; white-space: pre-line; line-height: 1.8;"></div>
+        `;
+
+        overlay.appendChild(content);
+        document.body.appendChild(overlay);
+
+        const style = document.createElement('style');
+        style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+        document.head.appendChild(style);
+    }
+
+    document.getElementById('loadingMessage').textContent = message;
+    overlay.style.display = 'flex';
+
+    window.onbeforeunload = function() {
+        return "ASN gönderimi devam ediyor. Sayfayı kapatmak istediğinizden emin misiniz?";
+    };
+}
+
+function hideLoadingOverlay() {
+    const overlay = document.getElementById('asnLoadingOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+    window.onbeforeunload = null;
+}
+
+function showSuccessModal(title, message, onClose) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 99998;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        padding: 3rem;
+        border-radius: 16px;
+        max-width: 550px;
+        text-align: center;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+    `;
+
+    content.innerHTML = `
+        <div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
+        <h3 style="font-size: 1.75rem; font-weight: 800; color: #065f46; margin-bottom: 1.5rem;">${title}</h3>
+        <p style="color: #374151; margin-bottom: 2rem; white-space: pre-line; line-height: 1.8; font-size: 1.1rem;">${message}</p>
+        <button onclick="this.closest('[style*=fixed]').remove(); ${onClose ? '(' + onClose.toString() + ')()' : ''}"
+                style="background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 1rem 2.5rem; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+            Tamam
+        </button>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+}
+
+function showErrorModal(title, message, details) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        padding: 3rem;
+        border-radius: 16px;
+        max-width: 550px;
+        text-align: center;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        position: relative;
+        z-index: 1000000;
+    `;
+
+    content.innerHTML = `
+        <div style="font-size: 4rem; margin-bottom: 1rem;">❌</div>
+        <h3 style="font-size: 1.75rem; font-weight: 800; color: #dc2626; margin-bottom: 1.5rem;">${title}</h3>
+        <p style="color: #374151; margin-bottom: 1rem; white-space: pre-line; line-height: 1.8; font-size: 1.1rem;">${message}</p>
+        ${details ? `<p style="color: #6b7280; font-size: 0.95rem; margin-bottom: 2rem; padding: 1rem; background: #f9fafb; border-radius: 8px; font-family: monospace;">${details}</p>` : '<div style="margin-bottom: 2rem;"></div>'}
+        <button onclick="this.closest('[style*=fixed]').remove()"
+                style="background: linear-gradient(135deg, #dc2626, #ef4444); color: white; padding: 1rem 2.5rem; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">
+            Kapat
+        </button>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+}
+
+function toggleVinBreakdown(button, dollyIndex) {
+    const breakdownRow = document.getElementById('vinBreakdown' + dollyIndex);
+    
+    if (breakdownRow.style.display === 'none') {
+        breakdownRow.style.display = 'table-row';
+        button.innerHTML = 'VIN\'leri Gizle';
+        button.style.background = 'rgba(239, 68, 68, 0.08)';
+        button.style.color = '#dc2626';
+        button.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+    } else {
+        breakdownRow.style.display = 'none';
+        button.innerHTML = 'VIN\'leri Göster';
+        button.style.background = 'rgba(66, 152, 181, 0.08)';
+        button.style.color = '#2c6b82';
+        button.style.borderColor = 'rgba(66, 152, 181, 0.3)';
+    }
+}
+
+// VIN Kopyalama Modal
+function showVinCopyModal() {
+    const partNumber = '{{ task.part_number }}';
+    const hasIrsaliye = {{ 'true' if task.can_submit_irsaliye and not task.can_submit_asn else 'false' }};
+    const groupTag = '{{ task.group_tag }}';
+    
+    // Modal oluştur
+    const modal = document.createElement('div');
+    modal.id = 'vinCopyModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+    
+    const content = document.createElement('div');
+    content.className = 'vin-modal-content';
+    content.style.cssText = `
+        background: white;
+        padding: 2rem;
+        border-radius: 16px;
+        max-width: 95vw;
+        width: 1200px;
+        max-height: 85vh;
+        overflow-y: auto;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+    `;
+    
+    content.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div>
+                <h3 style="font-size: 1.5rem; font-weight: 700; color: #1f2937; margin: 0;">📋 VIN Listesi</h3>
+                <p style="color: #6b7280; margin-top: 0.5rem; font-size: 0.9rem;">Part: ${partNumber} 
+                    <span style="background: ${groupTag === 'irsaliye' ? '#f59e0b' : groupTag === 'asn' ? '#10b981' : '#3b82f6'}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">${groupTag.toUpperCase()}</span>
+                </p>
+            </div>
+            <button onclick="closeVinCopyModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">✕</button>
+        </div>
+        <div id="vinListContent" style="text-align: center; padding: 2rem; color: #6b7280;">
+            <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
+            Yükleniyor...
+        </div>
+    `;
+    
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+    
+    // VINleri getir - URL encode part number
+    const encodedPartNumber = encodeURIComponent(partNumber);
+    const url = '/operator/task/' + encodedPartNumber + '/vins';
+    
+    console.log('Fetching VINs from:', url);
+    
+    fetch(url)
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`HTTP ${response.status}: ${text}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('VIN data received:', data);
+            if (data.success) {
+                displayVinList(data, hasIrsaliye, partNumber);
+            } else {
+                document.getElementById('vinListContent').innerHTML = `
+                    <div style="color: #dc2626;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">❌</div>
+                        <p>Hata: ${data.error || 'Bilinmeyen hata'}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('VIN fetch error:', error);
+            document.getElementById('vinListContent').innerHTML = `
+                <div style="color: #dc2626;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">❌</div>
+                    <p>VINler yüklenirken hata oluştu:</p>
+                    <p style="font-size: 0.85rem; color: #6b7280; margin-top: 0.5rem;">${error.message}</p>
+                </div>
+            `;
+        });
+}
+
+function closeVinCopyModal() {
+    const modal = document.getElementById('vinCopyModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function displayVinList(data, hasIrsaliye, partNumber) {
+    const eolGroups = data.eol_groups;
+    const totalVins = data.total_vins;
+    
+    let html = `
+        <div style="background: #f3f4f6; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center;">
+            <strong style="font-size: 1.1rem;">Toplam ${totalVins} VIN</strong>
+        </div>
+        <div class="vin-groups-grid">
+    `;
+    
+    // Her EOL için grup oluştur
+    for (const [eolName, vins] of Object.entries(eolGroups)) {
+        html += `
+            <div class="vin-group-card">
+                <div class="vin-group-header">
+                    ${eolName} <span class="vin-count-badge">${vins.length} VIN</span>
+                </div>
+                <div class="vin-group-body">
+                    <textarea id="vinText_${eolName.replace(/\s/g, '_')}" 
+                              readonly 
+                              class="vin-textarea">${vins.map(v => v.vin).join('\n')}</textarea>
+                    <div class="vin-group-actions">
+                        <button onclick="copyVinsToClipboard('vinText_${eolName.replace(/\s/g, '_')}')" 
+                                class="btn-copy-vin">
+                            📋 Kopyala (${vins.length})
+                        </button>
+                        <button onclick="selectAllVins('vinText_${eolName.replace(/\s/g, '_')}')" 
+                                class="btn-select-vin">
+                            Tümünü Seç
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    html += '</div>'; // Close vin-groups-grid
+    
+    // Tüm VINleri tek seferde kopyalama butonu
+    if (Object.keys(eolGroups).length > 1) {
+        let allVins = [];
+        for (const [eolName, vins] of Object.entries(eolGroups)) {
+            allVins.push(`=== ${eolName} ===`);
+            allVins.push(...vins.map(v => v.vin));
+            allVins.push('');
+        }
+        
+        html += `
+            <div class="vin-copy-all-section">
+                <button onclick="copyAllVinsGrouped()" class="btn-copy-all-vins">
+                    📋 Tüm VINleri Kopyala (EOL Gruplu - ${totalVins} VIN)
+                </button>
+                <textarea id="allVinsGrouped" style="display: none;">${allVins.join('\n')}</textarea>
+            </div>
+        `;
+    }
+    
+    // İRSALİYE etiketli görevler için "Görevi Tamamla" butonu
+    if (hasIrsaliye) {
+        html += `
+            <div class="vin-complete-task-section">
+                <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <p style="margin: 0; color: #92400e; font-size: 0.9rem;">
+                        ℹ️ <strong>İRSALİYE Görevi:</strong> VINleri kopyaladıktan sonra manuel olarak gönderdiyseniz, 
+                        aşağıdaki butona tıklayarak görevi tamamlayabilirsiniz.
+                    </p>
+                </div>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button onclick="completeTaskManually('${partNumber}')" class="btn-complete-task">
+                        ✅ Görevi Tamamla (Manuel Gönderildi)
+                    </button>
+                    <button onclick="closeVinCopyModal()" class="btn-cancel-complete">
+                        ❌ İptal
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    // CSS stillerini ekle
+    html += `
+        <style>
+            .vin-groups-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+                gap: 1.25rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            @media (min-width: 768px) {
+                .vin-groups-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
+            
+            @media (min-width: 1200px) {
+                .vin-groups-grid {
+                    grid-template-columns: repeat(3, 1fr);
+                }
+            }
+            
+            @media (max-width: 767px) {
+                .vin-groups-grid {
+                    grid-template-columns: 1fr;
+                }
+                .vin-modal-content {
+                    padding: 1.5rem !important;
+                }
+            }
+            
+            .vin-group-card {
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                transition: transform 0.2s, box-shadow 0.2s;
+            }
+            
+            .vin-group-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            }
+            
+            .vin-group-header {
+                background: linear-gradient(135deg, #3b82f6, #2563eb);
+                color: white;
+                padding: 0.875rem 1rem;
+                font-weight: 600;
+                font-size: 0.95rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .vin-count-badge {
+                background: rgba(255, 255, 255, 0.25);
+                padding: 0.25rem 0.75rem;
+                border-radius: 12px;
+                font-size: 0.85rem;
+                font-weight: 700;
+            }
+            
+            .vin-group-body {
+                padding: 1rem;
+            }
+            
+            .vin-textarea {
+                width: 100%;
+                min-height: 180px;
+                max-height: 300px;
+                font-family: 'Courier New', monospace;
+                font-size: 0.85rem;
+                padding: 0.75rem;
+                border: 1px solid #d1d5db;
+                border-radius: 8px;
+                background: #f9fafb;
+                resize: vertical;
+                line-height: 1.6;
+            }
+            
+            .vin-textarea:focus {
+                outline: 2px solid #3b82f6;
+                outline-offset: 2px;
+            }
+            
+            .vin-group-actions {
+                margin-top: 0.75rem;
+                display: flex;
+                gap: 0.5rem;
+            }
+            
+            .btn-copy-vin {
+                flex: 1;
+                background: #10b981;
+                color: white;
+                padding: 0.625rem 1rem;
+                border: none;
+                border-radius: 8px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: background 0.2s, transform 0.1s;
+                font-size: 0.9rem;
+            }
+            
+            .btn-copy-vin:hover {
+                background: #059669;
+                transform: scale(1.02);
+            }
+            
+            .btn-copy-vin:active {
+                transform: scale(0.98);
+            }
+            
+            .btn-select-vin {
+                background: #6b7280;
+                color: white;
+                padding: 0.625rem 1rem;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: background 0.2s;
+                font-size: 0.9rem;
+            }
+            
+            .btn-select-vin:hover {
+                background: #4b5563;
+            }
+            
+            .vin-copy-all-section {
+                margin-top: 1.5rem;
+                padding-top: 1.5rem;
+                border-top: 2px solid #e5e7eb;
+            }
+            
+            .btn-copy-all-vins {
+                width: 100%;
+                background: linear-gradient(135deg, #059669, #10b981);
+                color: white;
+                padding: 1rem 1.5rem;
+                border: none;
+                border-radius: 10px;
+                font-weight: 700;
+                cursor: pointer;
+                font-size: 1rem;
+                transition: transform 0.2s, box-shadow 0.2s;
+                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            }
+            
+            .btn-copy-all-vins:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+            }
+            
+            .btn-copy-all-vins:active {
+                transform: translateY(0);
+            }
+            
+            .vin-complete-task-section {
+                margin-top: 1.5rem;
+                padding-top: 1.5rem;
+                border-top: 2px solid #e5e7eb;
+            }
+            
+            .btn-complete-task {
+                flex: 1;
+                background: linear-gradient(135deg, #f59e0b, #d97706);
+                color: white;
+                padding: 1rem 1.5rem;
+                border: none;
+                border-radius: 10px;
+                font-weight: 700;
+                cursor: pointer;
+                font-size: 1rem;
+                transition: transform 0.2s, box-shadow 0.2s;
+                box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+            }
+            
+            .btn-complete-task:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
+            }
+            
+            .btn-complete-task:active {
+                transform: translateY(0);
+            }
+            
+            .btn-cancel-complete {
+                background: #6b7280;
+                color: white;
+                padding: 1rem 1.5rem;
+                border: none;
+                border-radius: 10px;
+                font-weight: 600;
+                cursor: pointer;
+                font-size: 1rem;
+                transition: background 0.2s;
+            }
+            
+            .btn-cancel-complete:hover {
+                background: #4b5563;
+            }
+        </style>
+    `;
+    
+    document.getElementById('vinListContent').innerHTML = html;
+}
+
+// Manuel görevi tamamla
+function completeTaskManually(partNumber) {
+    // Formdan sefer, plaka ve irsaliye bilgilerini al
+    const seferNo = document.getElementById('sefer_no_input')?.value?.trim() || '';
+    const plakaNo = document.getElementById('plaka_no_input')?.value?.trim() || '';
+    const irsaliyeNo = document.getElementById('irsaliye_no_input')?.value?.trim() || '';
+    
+    // 🔍 DEBUG: Değerleri konsola yazdır
+    console.log('🔍 Form Değerleri:');
+    console.log('  Sefer No:', seferNo);
+    console.log('  Plaka No:', plakaNo);
+    console.log('  İrsaliye No:', irsaliyeNo);
+    console.log('  Part Number:', partNumber);
+    
+    // Zorunlu alanları kontrol et
+    if (!seferNo || !plakaNo || !irsaliyeNo) {
+        console.error('❌ Eksik alanlar tespit edildi!');
+        showErrorModal(
+            '⚠️ Eksik Bilgi',
+            'Sefer No, Plaka No ve İrsaliye No alanları zorunludur!',
+            'Lütfen tüm alanları doldurun ve tekrar deneyin.'
+        );
+        return;
+    }
+    
+    if (!confirm('Bu görevi manuel olarak gönderilmiş kabul edip tamamlamak istediğinizden emin misiniz?\n\nSefer No: ' + seferNo + '\nPlaka No: ' + plakaNo + '\nİrsaliye No: ' + irsaliyeNo + '\n\nBu işlem geri alınamaz!')) {
+        console.log('ℹ️ Kullanıcı işlemi iptal etti');
+        return;
+    }
+    
+    console.log('📤 Backend\'e gönderiliyor...');
+    
+    const encodedPartNumber = encodeURIComponent(partNumber);
+    const requestBody = {
+        completed_by: 'operator_manual',
+        note: 'Manuel olarak VIN popup üzerinden tamamlandı',
+        sefer_numarasi: seferNo,
+        plaka_no: plakaNo,
+        irsaliye_no: irsaliyeNo
+    };
+    
+    console.log('📦 Request Body:', JSON.stringify(requestBody, null, 2));
+    
+    fetch('/operator/task/' + encodedPartNumber + '/complete-manually', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSuccessModal('Görev Tamamlandı!', 
+                `${partNumber} görevi başarıyla tamamlandı.\n\nSayfa yenileniyor...`);
+            
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            showErrorModal('Hata!', 'Görev tamamlanırken hata oluştu', data.error);
+        }
+    })
+    .catch(error => {
+        showErrorModal('Hata!', 'Görev tamamlanırken hata oluştu', error.message);
+    });
+}
+
+function copyVinsToClipboard(textareaId) {
+    const textarea = document.getElementById(textareaId);
+    textarea.select();
+    document.execCommand('copy');
+    
+    // Başarı mesajı
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '✅ Kopyalandı!';
+    button.style.background = '#059669';
+    
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.style.background = '#10b981';
+    }, 2000);
+}
+
+function selectAllVins(textareaId) {
+    const textarea = document.getElementById(textareaId);
+    textarea.select();
+}
+
+function copyAllVinsGrouped() {
+    const textarea = document.getElementById('allVinsGrouped');
+    textarea.style.display = 'block';
+    textarea.select();
+    document.execCommand('copy');
+    textarea.style.display = 'none';
+    
+    // Başarı mesajı
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '✅ Tümü Kopyalandı!';
+    button.style.background = '#059669';
+    
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+    }, 2000);
+}
+
+</script>
+<!-- End of embed template -->

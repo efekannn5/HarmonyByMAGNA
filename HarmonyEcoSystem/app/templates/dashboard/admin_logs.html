@@ -1,0 +1,317 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="card">
+  <div class="card-header">
+    <h2>📊 Sistem Logları</h2>
+    <p>Kategorilere ayrılmış, timeline görünümü ile sistem kayıtları</p>
+  </div>
+
+  <!-- Kategori Sekmeleri -->
+  <div class="log-categories">
+    <a href="{{ url_for('dashboard.admin_logs', category='all', page=1) }}" 
+       class="category-tab {% if category == 'all' %}active{% endif %}">
+      <span class="icon">📋</span>
+      <span class="label">Tümü</span>
+      <span class="badge">{{ category_stats.all }}</span>
+    </a>
+    <a href="{{ url_for('dashboard.admin_logs', category='asn', page=1) }}" 
+       class="category-tab {% if category == 'asn' %}active{% endif %}">
+      <span class="icon">📤</span>
+      <span class="label">ASN Logları</span>
+      <span class="badge">{{ category_stats.asn }}</span>
+    </a>
+    <a href="{{ url_for('dashboard.admin_logs', category='edit', page=1) }}" 
+       class="category-tab {% if category == 'edit' %}active{% endif %}">
+      <span class="icon">✏️</span>
+      <span class="label">Düzenlemeler</span>
+      <span class="badge">{{ category_stats.edit }}</span>
+    </a>
+    <a href="{{ url_for('dashboard.admin_logs', category='scan', page=1) }}" 
+       class="category-tab {% if category == 'scan' %}active{% endif %}">
+      <span class="icon">📦</span>
+      <span class="label">Okutmalar</span>
+      <span class="badge">{{ category_stats.scan }}</span>
+    </a>
+    <a href="{{ url_for('dashboard.admin_logs', category='error', page=1) }}" 
+       class="category-tab {% if category == 'error' %}active{% endif %}">
+      <span class="icon">❌</span>
+      <span class="label">Hatalar</span>
+      <span class="badge error">{{ category_stats.error }}</span>
+    </a>
+  </div>
+
+  <!-- Log Timeline -->
+  <div class="log-timeline">
+    {% if logs %}
+      {% for log in logs %}
+      <div class="log-entry level-{{ log.level.lower() }}">
+        <div class="log-header">
+          <span class="log-icon">{{ log.icon }}</span>
+          <span class="log-timestamp">{{ log.timestamp_str }}</span>
+          <span class="log-level">{{ log.level }}</span>
+          <span class="log-category">{{ log.category }}</span>
+        </div>
+        <div class="log-message">{{ log.message }}</div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <p>Bu kategoride log kaydı bulunamadı.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Sayfalama -->
+  {% if pagination.total_pages > 1 %}
+  <div class="pagination-controls">
+    {% if pagination.has_prev %}
+    <a href="{{ url_for('dashboard.admin_logs', category=category, page=pagination.page - 1) }}" 
+       class="btn btn-secondary">
+      ‹ Önceki
+    </a>
+    {% else %}
+    <span class="btn btn-secondary disabled">‹ Önceki</span>
+    {% endif %}
+
+    <span class="page-info">
+      Sayfa <strong>{{ pagination.page }}</strong> / <strong>{{ pagination.total_pages }}</strong>
+      <span class="total-count">(Toplam {{ pagination.total_count }} kayıt)</span>
+    </span>
+
+    {% if pagination.has_next %}
+    <a href="{{ url_for('dashboard.admin_logs', category=category, page=pagination.page + 1) }}" 
+       class="btn btn-secondary">
+      Sonraki ›
+    </a>
+    {% else %}
+    <span class="btn btn-secondary disabled">Sonraki ›</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+
+<style>
+/* Kategori Sekmeleri */
+.log-categories {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  padding: 0.5rem;
+  background: #f5f5f5;
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.category-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #333;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.category-tab:hover {
+  background: #e8f4f8;
+  border-color: #0078d4;
+}
+
+.category-tab.active {
+  background: #0078d4;
+  color: white;
+  font-weight: 600;
+}
+
+.category-tab .icon {
+  font-size: 1.2rem;
+}
+
+.category-tab .label {
+  font-size: 0.95rem;
+}
+
+.category-tab .badge {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.category-tab.active .badge {
+  background: rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+.category-tab .badge.error {
+  background: #d32f2f;
+  color: white;
+}
+
+/* Log Timeline */
+.log-timeline {
+  margin: 1rem 0;
+  max-height: 70vh;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.log-entry {
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  background: white;
+  transition: background 0.2s ease;
+}
+
+.log-entry:hover {
+  background: #f5f5f5;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.log-icon {
+  font-size: 1.2rem;
+}
+
+.log-timestamp {
+  color: #666;
+  font-family: 'Courier New', monospace;
+}
+
+.log-level {
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.log-entry.level-info .log-level {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.log-entry.level-warning .log-level {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.log-entry.level-error .log-level {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.log-entry.level-debug .log-level {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.log-category {
+  padding: 0.2rem 0.6rem;
+  background: #e0e0e0;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #555;
+}
+
+.log-message {
+  padding-left: 2rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: #333;
+  word-wrap: break-word;
+}
+
+.log-entry.level-error .log-message {
+  color: #d32f2f;
+}
+
+.log-entry.level-warning .log-message {
+  color: #f57c00;
+}
+
+/* Empty State */
+.empty-state {
+  padding: 3rem;
+  text-align: center;
+  color: #999;
+}
+
+/* Sayfalama */
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f5f5f5;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.page-info {
+  font-size: 0.95rem;
+  color: #666;
+}
+
+.page-info strong {
+  color: #0078d4;
+}
+
+.total-count {
+  font-size: 0.85rem;
+  color: #999;
+  margin-left: 0.5rem;
+}
+
+.btn-secondary.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Mobil Uyumluluk */
+@media (max-width: 768px) {
+  .log-categories {
+    flex-direction: column;
+  }
+
+  .category-tab {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .log-header {
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+  }
+
+  .log-message {
+    padding-left: 0;
+    font-size: 0.85rem;
+  }
+
+  .pagination-controls {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+</style>
+
+{% endblock %}

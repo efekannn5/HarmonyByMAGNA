@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Analytics Reports{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <div class="col-md-12">
+        <div class="chart-card">
+            <h6><i class="bi bi-calendar3"></i> Generate Custom Report</h6>
+            <form class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Report Type</label>
+                    <select class="form-select">
+                        <option>Daily Summary</option>
+                        <option>Weekly Performance</option>
+                        <option>Monthly Overview</option>
+                        <option>Line Comparison</option>
+                        <option>Operator Analysis</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">End Date</label>
+                    <input type="date" class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="button" class="btn btn-primary w-100">
+                        <i class="bi bi-download me-2"></i>Export
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="chart-card">
+            <h6><i class="bi bi-graph-up"></i> Monthly Trend</h6>
+            <canvas id="monthlyChart" height="150"></canvas>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="chart-card">
+            <h6><i class="bi bi-lightning"></i> Quick Stats</h6>
+            <div class="row text-center py-3">
+                <div class="col-6 mb-3">
+                    <div style="font-size: 28px; font-weight: 700; color: #3b82f6;" id="todayProduction">-</div>
+                    <div class="text-muted small">Today's Production</div>
+                </div>
+                <div class="col-6 mb-3">
+                    <div style="font-size: 28px; font-weight: 700; color: #10b981;" id="avgEfficiency">-</div>
+                    <div class="text-muted small">Efficiency Rate</div>
+                </div>
+                <div class="col-6">
+                    <div style="font-size: 28px; font-weight: 700; color: #fbbf24;" id="activeLines">-</div>
+                    <div class="text-muted small">Active Lines</div>
+                </div>
+                <div class="col-6">
+                    <div style="font-size: 28px; font-weight: 700; color: #f87171;" id="pendingShipments">-</div>
+                    <div class="text-muted small">Pending Shipments</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-3">
+    <div class="col-md-12">
+        <div class="chart-card">
+            <h6><i class="bi bi-file-earmark-text"></i> Recent Reports</h6>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Report Name</th>
+                            <th>Generated</th>
+                            <th>Period</th>
+                            <th>Records</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><i class="bi bi-file-pdf text-danger me-2"></i>Daily Summary - Jan 18</td>
+                            <td>2026-01-18 08:00</td>
+                            <td>Jan 18, 2026</td>
+                            <td>72 dollies</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-primary">
+                                    <i class="bi bi-download"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-file-excel text-success me-2"></i>Weekly Performance</td>
+                            <td>2026-01-15 17:30</td>
+                            <td>Jan 12-18, 2026</td>
+                            <td>350 dollies</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-primary">
+                                    <i class="bi bi-download"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+fetch('/analytics/api/monthly-trend')
+    .then(r => r.json())
+    .then(data => {
+        const ctx = document.getElementById('monthlyChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(m => m.month),
+                datasets: [{
+                    label: 'Total Production',
+                    data: data.map(m => m.total),
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } }
+            }
+        });
+    });
+
+fetch('/analytics/api/overview')
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('todayProduction').textContent = data.total_dollies || 0;
+        document.getElementById('avgEfficiency').textContent = '67%';
+        document.getElementById('activeLines').textContent = data.top_lines ? data.top_lines.length : 0;
+        document.getElementById('pendingShipments').textContent = data.in_progress || 0;
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Process Analysis{% endblock %}
+{% block page_title %}Process Analysis{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4" id="processSummary">
+    <div class="col-md-3">
+        <div class="stat-card primary">
+            <div class="icon-wrapper"><i class="bi bi-diagram-3"></i></div>
+            <h6>Total Dollies</h6>
+            <div class="value" id="totalDollies">-</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card success">
+            <div class="icon-wrapper"><i class="bi bi-check2-circle"></i></div>
+            <h6>Completed Dollies</h6>
+            <div class="value" id="completedDollies">-</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card warning">
+            <div class="icon-wrapper"><i class="bi bi-stopwatch"></i></div>
+            <h6>Avg EOL → Scan</h6>
+            <div class="value" id="avgProdToScan">-</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card danger">
+            <div class="icon-wrapper"><i class="bi bi-truck"></i></div>
+            <h6>Avg Web → Shipment</h6>
+            <div class="value" id="avgWebToShip">-</div>
+        </div>
+    </div>
+</div>
+
+<div class="chart-card">
+    <h6><i class="bi bi-list-ul"></i> Per-Line Process Metrics</h6>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Production Line</th>
+                    <th class="text-end">Dollies</th>
+                    <th class="text-end">Qty</th>
+                    <th class="text-end">EOL → Scan</th>
+                    <th class="text-end">Scan → Loading</th>
+                    <th class="text-end">Loading → Web</th>
+                    <th class="text-end">Web → Shipment</th>
+                    <th class="text-end">Total Cycle</th>
+                    <th class="text-end">Last Activity</th>
+                </tr>
+            </thead>
+            <tbody id="processTable">
+                <tr><td colspan="9" class="text-center">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function formatMinutes(mins) {
+    if (mins === null || mins === undefined || isNaN(mins)) return '-';
+    const m = Math.round(mins);
+    if (m < 60) return `${m} dk`;
+    const hours = Math.floor(m / 60);
+    const minutes = m % 60;
+    return `${hours}s ${minutes}dk`;
+}
+
+fetch('/analytics/api/line-process-metrics')
+    .then(r => r.json())
+    .then(res => {
+        if (!res.success) throw new Error(res.error || 'API error');
+        const data = res.data || [];
+        const tbody = document.getElementById('processTable');
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center">No data</td></tr>';
+            return;
+        }
+
+        // Summary aggregates
+        const totalDollies = data.reduce((acc, d) => acc + (d.total_dollies || 0), 0);
+        const completedDollies = data.reduce((acc, d) => acc + (d.completed_dollies || 0), 0);
+        const avg = (key) => {
+            const vals = data.map(d => d[key]).filter(v => v !== null && v !== undefined);
+            if (!vals.length) return null;
+            return vals.reduce((a, b) => a + b, 0) / vals.length;
+        };
+
+        document.getElementById('totalDollies').textContent = totalDollies.toLocaleString();
+        document.getElementById('completedDollies').textContent = completedDollies.toLocaleString();
+        document.getElementById('avgProdToScan').textContent = formatMinutes(avg('avg_prod_to_scan_min'));
+        document.getElementById('avgWebToShip').textContent = formatMinutes(avg('avg_web_to_ship_min'));
+
+        tbody.innerHTML = data.map(item => {
+            const completionRate = item.total_dollies ? Math.round((item.completed_dollies || 0) * 100 / item.total_dollies) : 0;
+            const last = item.last_activity ? new Date(item.last_activity).toLocaleString() : '-';
+            return `
+                <tr>
+                    <td><strong>${item.production_line || 'Unknown'}</strong></td>
+                    <td class="text-end">
+                        ${item.total_dollies || 0}
+                        <span class="badge ms-2 ${completionRate >= 80 ? 'bg-success' : completionRate >= 50 ? 'bg-warning text-dark' : 'bg-danger'}">
+                            ${completionRate}%</span>
+                    </td>
+                    <td class="text-end">${item.total_quantity || 0}</td>
+                    <td class="text-end">${formatMinutes(item.avg_prod_to_scan_min)}</td>
+                    <td class="text-end">${formatMinutes(item.avg_scan_to_loading_min)}</td>
+                    <td class="text-end">${formatMinutes(item.avg_loading_to_web_min)}</td>
+                    <td class="text-end">${formatMinutes(item.avg_web_to_ship_min)}</td>
+                    <td class="text-end fw-bold">${formatMinutes(item.avg_total_min)}</td>
+                    <td class="text-end"><span class="text-muted">${last}</span></td>
+                </tr>
+            `;
+        }).join('');
+    })
+    .catch(err => {
+        console.error(err);
+        document.getElementById('processTable').innerHTML = '<tr><td colspan="9" class="text-center text-danger">Veri alınamadı</td></tr>';
+    });
+</script>
+{% endblock %}

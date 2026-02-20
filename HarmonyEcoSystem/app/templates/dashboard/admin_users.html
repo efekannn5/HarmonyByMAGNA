@@ -1,0 +1,95 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="card">
+  <div class="card-header">
+    <h2>Kullanıcı Yönetimi</h2>
+    <p>Yeni kullanıcı ekleyebilir, şifrelerini sıfırlayabilir veya aktif/pasif hale getirebilirsiniz.</p>
+  </div>
+  {% if message %}
+  <div class="alert success">{{ message }}</div>
+  {% endif %}
+  {% if error %}
+  <div class="alert error">{{ error }}</div>
+  {% endif %}
+  <form method="post" action="{{ url_for('dashboard.create_user') }}" class="group-form">
+    <h3>Yeni Kullanıcı</h3>
+    <div class="form-group">
+      <label for="username">Kullanıcı Adı</label>
+      <input type="text" id="username" name="username" required>
+    </div>
+    <div class="form-group">
+      <label for="display_name">Ad Soyad</label>
+      <input type="text" id="display_name" name="display_name">
+    </div>
+    <div class="form-group">
+      <label for="password">Şifre</label>
+      <input type="password" id="password" name="password" required>
+    </div>
+    <div class="form-group">
+      <label for="role_id">Rol</label>
+      <select id="role_id" name="role_id" required>
+        <option value="">Seçiniz</option>
+        {% for role in roles %}
+        <option value="{{ role.Id }}">{{ role.Name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit">Kullanıcı Oluştur</button>
+  </form>
+
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>Kullanıcı</th>
+          <th>Rol</th>
+          <th>Durum</th>
+          <th>Son Login</th>
+          <th>Terminal Barkod</th>
+          <th>İşlemler</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td>{{ user.Username }}<br><small>{{ user.DisplayName or '' }}</small></td>
+          <td>{{ user.role.Name }}</td>
+          <td>{{ 'Aktif' if user.IsActive else 'Pasif' }}</td>
+          <td>{{ user.LastLoginAt or '-' }}</td>
+          <td>
+            {% set sessions = user.terminal_sessions|sort(attribute='CreatedAt', reverse=True) %}
+            {% if sessions %}
+              {% set session = sessions[0] %}
+              <div class="token-box">
+                <div><strong>{{ session.Token }}</strong></div>
+                <small>Oluşturuldu: {{ session.CreatedAt.strftime('%d.%m.%Y %H:%M') }}</small><br>
+                <small>Geçerlilik: {{ session.ExpiresAt.strftime('%d.%m.%Y %H:%M') }}</small>
+              </div>
+            {% else %}
+              <span class="empty">Token oluşturulmamış</span>
+            {% endif %}
+            <form method="post" action="{{ url_for('dashboard.generate_user_terminal_barcode', user_id=user.Id) }}" class="inline-form" style="margin-top: 8px;">
+              <button type="submit">{{ 'Yeniden Oluştur' if sessions else 'Token Oluştur' }}</button>
+            </form>
+          </td>
+          <td>
+            <form method="post" action="{{ url_for('dashboard.reset_user_password', user_id=user.Id) }}" class="inline-form">
+              <input type="password" name="new_password" placeholder="Yeni şifre" required>
+              <button type="submit">Şifre Sıfırla</button>
+            </form>
+            <form method="post" action="{{ url_for('dashboard.toggle_user_status', user_id=user.Id) }}" class="inline-form">
+              <button type="submit">{{ 'Pasifleştir' if user.IsActive else 'Aktifleştir' }}</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="empty">Henüz kullanıcı yok.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}

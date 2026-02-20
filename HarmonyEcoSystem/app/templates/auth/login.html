@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="auth-section slim">
+  <div class="auth-card slim">
+    <div class="auth-form-panel">
+      <div class="auth-logo">
+        <div class="auth-logo-mark">
+          <img src="{{ url_for('static', filename='img/orjlogo.png') }}" alt="Magna Logo">
+        </div>
+        <h2>Harmony by MAGNA</h2>
+        <p>Web Giriş Ekranı</p>
+      </div>
+
+      {% if error %}
+      <div class="alert error auth-alert">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" class="auth-form">
+        <div class="form-group auth-field">
+          <label for="username">Kullanıcı adı</label>
+          <input type="text" id="username" name="username" required autofocus autocomplete="username">
+        </div>
+        <div class="form-group auth-field">
+          <label for="password">Parola</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Giriş</button>
+      </form>
+
+      <p class="auth-hint" style="text-align: center;">Magna YMC</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

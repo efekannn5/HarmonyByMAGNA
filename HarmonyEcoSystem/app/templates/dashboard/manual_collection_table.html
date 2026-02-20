@@ -1,0 +1,902 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="manual-collection-container">
+    <!-- Header Panel -->
+    <div class="collection-header">
+        <div class="header-info">
+            <h2>📦 Manuel Dolly Toplama</h2>
+            <div class="header-stats">
+                <span>Toplam: <strong id="foundCount">0</strong> dolly</span>
+                <span>•</span>
+                <span>Seçili: <strong id="selectedCount">0</strong> dolly</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary btn-sm" onclick="selectAll()">
+                ☑️ Tümünü Seç
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="deselectAll()">
+                ⬜ Temizle
+            </button>
+            <button id="submitBtn" class="btn btn-success btn-sm" onclick="submitSelected()" disabled>
+                ✅ Gönder
+            </button>
+        </div>
+    </div>
+
+    <!-- Search and Filter Bar -->
+    <div class="search-bar">
+        <input type="text" id="searchInput" class="search-input" 
+               placeholder="🔍 Dolly No, VIN veya Müşteri Referansı ile ara..." 
+               onkeyup="filterTable()">
+        <select id="eolFilter" class="eol-filter" onchange="filterTable()">
+            <option value="">🏭 Tüm İstasyonlar</option>
+            {% if eol_dollys %}
+                {% for eol_group in eol_dollys %}
+                <option value="{{ eol_group.EOLName }}">{{ eol_group.EOLName }} ({{ eol_group.Dollys|length }} dolly)</option>
+                {% endfor %}
+            {% endif %}
+        </select>
+    </div>
+
+    <!-- Dolly Table -->
+    <div class="table-container">
+        <table class="dolly-table" id="dollyTable">
+            <thead>
+                <tr>
+                    <th class="col-select">
+                        <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll()" title="Tümünü Seç/Kaldır">
+                    </th>
+                    <th class="col-number">#</th>
+                    <th class="col-dolly">Dolly No</th>
+                    <th class="col-eol">İstasyon</th>
+                    <th class="col-vin-count">Adet</th>
+                    <th class="col-customer">Müşteri No</th>
+                    <th class="col-first-vin">İlk VIN</th>
+                    <th class="col-last-vin">Son VIN</th>
+                    <th class="col-date">Tarih</th>
+                    <th class="col-vins">Detay</th>
+                </tr>
+            </thead>
+            <tbody id="dollyTableBody">
+                {% if eol_dollys %}
+                    {% set row_counter = namespace(value=0) %}
+                    {% for eol_group in eol_dollys %}
+                        {% set eol_idx = loop.index0 %}
+                        {% for dolly in eol_group.Dollys %}
+                            {% set row_counter.value = row_counter.value + 1 %}
+                            <tr class="dolly-row" 
+                                id="row-{{ row_counter.value }}"
+                                data-dolly-no="{{ dolly.DollyNo }}"
+                                data-vin-count="{{ dolly.VinCount }}"
+                                data-vins='{{ dolly.Vins|tojson }}'
+                                data-customer="{{ dolly.CustomerReferans or '' }}"
+                                data-eol="{{ eol_group.EOLName }}"
+                                data-order="{{ row_counter.value }}">
+                                <td class="col-select">
+                                    <input type="checkbox" 
+                                           class="row-checkbox" 
+                                           onchange="toggleRowSelection({{ row_counter.value }})">
+                                </td>
+                                <td class="col-number">{{ row_counter.value }}</td>
+                                <td class="col-dolly">
+                                    <strong>{{ dolly.DollyOrderNo or '-' }}</strong>
+                                </td>
+                                <td class="col-eol">
+                                    <span class="eol-badge eol-bg-{{ (eol_idx % 8) + 1 }}">{{ eol_group.EOLName }}</span>
+                                </td>
+                                <td class="col-vin-count">
+                                    <span class="vin-count-badge">{{ dolly.VinCount }}</span>
+                                </td>
+                                <td class="col-customer">{{ dolly.CustomerReferans or '-' }}</td>
+                                <td class="col-first-vin">
+                                    <span class="vin-badge">{{ dolly.Vins[0] if dolly.Vins|length > 0 else '-' }}</span>
+                                </td>
+                                <td class="col-last-vin">
+                                    <span class="vin-badge">{{ dolly.Vins[-1] if dolly.Vins|length > 0 else '-' }}</span>
+                                </td>
+                                <td class="col-date">
+                                    {{ dolly.InsertedAt.strftime('%d.%m.%Y %H:%M') if dolly.InsertedAt else '-' }}
+                                </td>
+                                <td class="col-vins">
+                                    <button class="btn-show-vins" onclick="showVinModal({{ row_counter.value }}, event)">
+                                        VIN'leri Göster ({{ dolly.VinCount }})
+                                    </button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <div style="padding: 3rem; text-align: center;">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">📦</div>
+                                <h3>Dolly Bulunamadı</h3>
+                                <p>Henüz DollyEOLInfo tablosunda kayıt yok.</p>
+                            </div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- VIN Modal -->
+<div id="vinModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">VIN Listesi</h3>
+            <button class="modal-close" onclick="closeVinModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- VINs will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<style>
+.manual-collection-container {
+    padding: 1rem;
+    background: #f8f9fa;
+    min-height: calc(100vh - 80px);
+}
+
+.collection-header {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.header-info h2 {
+    margin: 0 0 0.5rem 0;
+    color: #1f2937;
+    font-size: 1.3rem;
+}
+
+.header-stats {
+    display: flex;
+    gap: 0.8rem;
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.header-stats strong {
+    color: #4298B5;
+    font-weight: 700;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+}
+
+.selection-panel {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.selection-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.selection-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.95rem;
+}
+
+.form-select {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: white;
+    transition: all 0.2s;
+}
+
+.form-select:hover:not(:disabled) {
+    border-color: #d1d5db;
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: #4298B5;
+    box-shadow: 0 0 0 3px rgba(66, 152, 181, 0.1);
+}
+
+.form-select:disabled {
+    background: #f3f4f6;
+    cursor: not-allowed;
+}
+
+.search-bar {
+    background: white;
+    border-radius: 12px;
+    padding: 0.8rem 1.2rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.search-input {
+    flex: 1;
+    padding: 0.6rem 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #4298B5;
+    box-shadow: 0 0 0 3px rgba(66, 152, 181, 0.1);
+}
+
+.eol-filter {
+    min-width: 250px;
+    padding: 0.6rem 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.eol-filter:hover {
+    border-color: #4298B5;
+}
+
+.eol-filter:focus {
+    outline: none;
+    border-color: #4298B5;
+    box-shadow: 0 0 0 3px rgba(66, 152, 181, 0.1);
+}
+
+.table-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.dolly-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.dolly-table thead {
+    background: linear-gradient(135deg, #4298B5 0%, #3686a0 100%);
+    color: white;
+}
+
+.dolly-table th {
+    padding: 0.9rem 0.8rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: white;
+}
+
+.dolly-table tbody tr {
+    border-bottom: 1px solid #e5e7eb;
+    transition: all 0.15s;
+}
+
+.dolly-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.dolly-table tbody tr.selected {
+    background: #e6f4f8;
+}
+
+.eol-badge.eol-bg-1 { background: #e6f2ff; color: #1f4b99; }
+.eol-badge.eol-bg-2 { background: #e8f7ef; color: #1b6b3a; }
+.eol-badge.eol-bg-3 { background: #fff1e6; color: #8a4b10; }
+.eol-badge.eol-bg-4 { background: #f3e8ff; color: #5b2c83; }
+.eol-badge.eol-bg-5 { background: #eef2f7; color: #334155; }
+.eol-badge.eol-bg-6 { background: #e9f7e8; color: #1f6a2c; }
+.eol-badge.eol-bg-7 { background: #ffe8e8; color: #8a1f1f; }
+.eol-badge.eol-bg-8 { background: #e6f0ff; color: #1f3a8a; }
+
+.dolly-table td {
+    padding: 0.8rem;
+    color: #374151;
+}
+
+.col-select {
+    width: 40px;
+    text-align: center;
+}
+
+.col-number {
+    width: 50px;
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.85rem;
+}
+
+.col-dolly {
+    min-width: 120px;
+}
+
+.col-dolly strong {
+    color: #1f2937;
+    font-weight: 700;
+}
+
+.col-eol {
+    min-width: 150px;
+}
+
+.col-customer {
+    min-width: 150px;
+}
+
+.col-date {
+    width: 140px;
+}
+
+.col-vin-count {
+    width: 100px;
+    text-align: center;
+}
+
+.col-customer {
+    min-width: 150px;
+}
+
+.col-first-vin {
+    min-width: 140px;
+}
+
+.col-last-vin {
+    min-width: 140px;
+}
+
+.col-date {
+    width: 140px;
+}
+
+.col-vins {
+    width: 180px;
+}
+
+.eol-badge {
+    display: inline-block;
+    padding: 0.3rem 0.7rem;
+    background: linear-gradient(135deg, #4298B5 0%, #3686a0 100%);
+    color: white;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.vin-count-badge {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #86efac;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.vin-badge {
+    display: inline-block;
+    padding: 0.3rem 0.6rem;
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: monospace;
+}
+
+.btn-show-vins {
+    padding: 0.4rem 0.8rem;
+    background: linear-gradient(135deg, #e6f4f8 0%, #d0ebf2 100%);
+    border: 1px solid #4298B5;
+    color: #0c4a6e;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-show-vins:hover {
+    background: linear-gradient(135deg, #d0ebf2 0%, #b8dce7 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(66, 152, 181, 0.2);
+}
+
+.row-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 700px;
+    max-height: 80vh;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    padding: 1.2rem 1.5rem;
+    border-bottom: 2px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #4298B5 0%, #3686a0 100%);
+    color: white;
+    border-radius: 16px 16px 0 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.modal-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 1.8rem;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    max-height: calc(80vh - 80px);
+}
+
+.vin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.6rem;
+}
+
+.vin-item {
+    padding: 0.6rem 0.8rem;
+    background: #f8f9fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+    text-align: center;
+}
+
+.empty-state {
+    text-align: center;
+    color: #9ca3af;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .collection-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .header-actions {
+        width: 100%;
+    }
+    
+    .header-actions .btn {
+        flex: 1;
+    }
+}
+</style>
+
+<script>
+let manualCollection = {
+    allDollys: [],
+    selectedDollys: []
+};
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    initManualCollection();
+});
+
+function initManualCollection() {
+    const rows = document.querySelectorAll('.dolly-row');
+    manualCollection.allDollys = Array.from(rows).map(row => {
+        const vinsData = row.dataset.vins;
+        let vins = [];
+        try {
+            vins = JSON.parse(vinsData || '[]');
+        } catch(e) {
+            console.error('❌ VIN parse hatası:', vinsData, e);
+        }
+        
+        const dolly = {
+            order: parseInt(row.dataset.order),
+            dollyNo: row.dataset.dollyNo,
+            vinCount: parseInt(row.dataset.vinCount),
+            vins: vins,
+            customer: row.dataset.customer,
+            eol: row.dataset.eol
+        };
+        
+        return dolly;
+    });
+    
+    updateCounts();
+    console.log(`✅ Manuel toplama başlatıldı: ${manualCollection.allDollys.length} dolly yüklendi`);
+}
+
+function toggleRowSelection(order) {
+    const row = document.getElementById(`row-${order}`);
+    const checkbox = row.querySelector('.row-checkbox');
+    const clickedDolly = manualCollection.allDollys.find(d => d.order === order);
+    
+    const isCurrentlySelected = manualCollection.selectedDollys.includes(order);
+    
+    if (isCurrentlySelected) {
+        // Seçimi kaldırma - bu EOL'deki sonraki tüm seçimleri de kaldır
+        const eolName = clickedDolly.eol;
+        const selectedFromSameEol = manualCollection.selectedDollys
+            .filter(selectedOrder => {
+                const d = manualCollection.allDollys.find(dolly => dolly.order === selectedOrder);
+                return d && d.eol === eolName;
+            })
+            .sort((a, b) => a - b);
+        
+        // Tıklanan dolly'den sonraki tüm seçimleri kaldır
+        const clickedIndex = selectedFromSameEol.indexOf(order);
+        const toRemove = selectedFromSameEol.slice(clickedIndex);
+        
+        toRemove.forEach(orderToRemove => {
+            const rowToRemove = document.getElementById(`row-${orderToRemove}`);
+            const checkboxToRemove = rowToRemove.querySelector('.row-checkbox');
+            checkboxToRemove.checked = false;
+            rowToRemove.classList.remove('selected');
+            const index = manualCollection.selectedDollys.indexOf(orderToRemove);
+            if (index > -1) {
+                manualCollection.selectedDollys.splice(index, 1);
+            }
+        });
+    } else {
+        // Seçim ekleme - bu EOL için sıralı seçim kontrolü
+        const eolName = clickedDolly.eol;
+        
+        // Bu EOL'deki tüm dolly'leri al
+        const dollysFromSameEol = manualCollection.allDollys
+            .filter(d => d.eol === eolName)
+            .sort((a, b) => a.order - b.order);
+        
+        // Bu EOL'den zaten seçili olanları al
+        const selectedFromSameEol = manualCollection.selectedDollys
+            .filter(selectedOrder => {
+                const d = manualCollection.allDollys.find(dolly => dolly.order === selectedOrder);
+                return d && d.eol === eolName;
+            })
+            .sort((a, b) => a - b);
+        
+        // Eğer hiç seçim yoksa, direkt seç
+        if (selectedFromSameEol.length === 0) {
+            // İlk seçim - bu EOL'deki ilk dolly olmalı
+            const firstDollyOrder = dollysFromSameEol[0].order;
+            if (order !== firstDollyOrder) {
+                showError(`❌ ${eolName} için sıralı seçim yapmalısınız! Önce #${firstDollyOrder}'ü seçin.`);
+                checkbox.checked = false;
+                return;
+            }
+        } else {
+            // Zaten seçimler var - bir sonraki sıradaki olup olmadığını kontrol et
+            const lastSelectedOrder = selectedFromSameEol[selectedFromSameEol.length - 1];
+            const lastSelectedIndex = dollysFromSameEol.findIndex(d => d.order === lastSelectedOrder);
+            
+            if (lastSelectedIndex === -1) {
+                console.error('❌ Son seçili dolly bulunamadı!');
+                return;
+            }
+            
+            // Bir sonraki sıradaki dolly'nin order'ı ne olmalı?
+            if (lastSelectedIndex + 1 >= dollysFromSameEol.length) {
+                showError(`❌ ${eolName} için tüm dolly'ler zaten seçildi!`);
+                checkbox.checked = false;
+                return;
+            }
+            
+            const expectedNextOrder = dollysFromSameEol[lastSelectedIndex + 1].order;
+            if (order !== expectedNextOrder) {
+                showError(`❌ ${eolName} için sıralı seçim yapmalısınız! Sıradaki: #${expectedNextOrder}`);
+                checkbox.checked = false;
+                return;
+            }
+        }
+        
+        // Kontrollerden geçti, seç
+        checkbox.checked = true;
+        row.classList.add('selected');
+        manualCollection.selectedDollys.push(order);
+    }
+    
+    updateCounts();
+    updateSelectAllCheckbox();
+}
+
+function selectAll() {
+    // Her EOL için sıralı olarak tüm dolly'leri seç
+    const eolGroups = {};
+    
+    // Görünür dolly'leri EOL'e göre grupla
+    const visibleRows = Array.from(document.querySelectorAll('.dolly-row')).filter(r => r.style.display !== 'none');
+    visibleRows.forEach(row => {
+        const order = parseInt(row.dataset.order);
+        const dolly = manualCollection.allDollys.find(d => d.order === order);
+        if (dolly) {
+            if (!eolGroups[dolly.eol]) {
+                eolGroups[dolly.eol] = [];
+            }
+            eolGroups[dolly.eol].push(dolly);
+        }
+    });
+    
+    // Tüm seçimleri temizle
+    manualCollection.selectedDollys = [];
+    
+    // Her EOL için sıralı olarak seç
+    Object.values(eolGroups).forEach(dollys => {
+        dollys.sort((a, b) => a.order - b.order).forEach(dolly => {
+            const row = document.getElementById(`row-${dolly.order}`);
+            const checkbox = row.querySelector('.row-checkbox');
+            checkbox.checked = true;
+            row.classList.add('selected');
+            manualCollection.selectedDollys.push(dolly.order);
+        });
+    });
+    
+    updateCounts();
+    updateSelectAllCheckbox();
+}
+
+function deselectAll() {
+    const rows = document.querySelectorAll('.dolly-row');
+    manualCollection.selectedDollys = [];
+    
+    rows.forEach(row => {
+        const checkbox = row.querySelector('.row-checkbox');
+        checkbox.checked = false;
+        row.classList.remove('selected');
+    });
+    
+    updateCounts();
+    updateSelectAllCheckbox();
+}
+
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox.checked) {
+        selectAll();
+    } else {
+        deselectAll();
+    }
+}
+
+function updateSelectAllCheckbox() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const visibleRows = Array.from(document.querySelectorAll('.dolly-row')).filter(r => r.style.display !== 'none');
+    const totalVisible = visibleRows.length;
+    const selectedVisible = visibleRows.filter(r => {
+        const order = parseInt(r.dataset.order);
+        return manualCollection.selectedDollys.includes(order);
+    }).length;
+    selectAllCheckbox.checked = totalVisible > 0 && selectedVisible === totalVisible;
+}
+
+function updateCounts() {
+    document.getElementById('foundCount').textContent = manualCollection.allDollys.length;
+    document.getElementById('selectedCount').textContent = manualCollection.selectedDollys.length;
+    
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = manualCollection.selectedDollys.length === 0;
+}
+
+function showVinModal(order, event) {
+    event.stopPropagation();
+    
+    const dolly = manualCollection.allDollys.find(d => d.order === order);
+    if (!dolly) return;
+    
+    const modal = document.getElementById('vinModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    
+    modalTitle.textContent = `VIN Listesi - ${dolly.dollyNo} (${dolly.vinCount} adet)`;
+    
+    const vinGrid = document.createElement('div');
+    vinGrid.className = 'vin-grid';
+    vinGrid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem; padding: 1rem;';
+    
+    dolly.vins.forEach((vin, idx) => {
+        const vinItem = document.createElement('div');
+        vinItem.className = 'vin-item';
+        vinItem.style.cssText = 'padding: 0.6rem; background: #eff6ff; border: 1px solid #93c5fd; border-radius: 6px; font-family: monospace; font-size: 0.9rem; color: #1e40af;';
+        vinItem.textContent = vin;
+        vinGrid.appendChild(vinItem);
+    });
+    
+    modalBody.innerHTML = '';
+    modalBody.appendChild(vinGrid);
+    
+    modal.classList.add('active');
+}
+
+function closeVinModal() {
+    const modal = document.getElementById('vinModal');
+    modal.classList.remove('active');
+}
+
+document.getElementById('vinModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeVinModal();
+    }
+});
+
+function filterTable() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const selectedEol = document.getElementById('eolFilter').value.toLowerCase();
+    const rows = document.querySelectorAll('.dolly-row');
+    
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        const dollyNo = row.dataset.dollyNo.toLowerCase();
+        const customer = row.dataset.customer.toLowerCase();
+        const eol = row.dataset.eol.toLowerCase();
+        const vins = JSON.parse(row.dataset.vins || '[]').join(' ').toLowerCase();
+        
+        // Search term match
+        const searchMatches = dollyNo.includes(searchTerm) || 
+                             customer.includes(searchTerm) || 
+                             eol.includes(searchTerm) ||
+                             vins.includes(searchTerm);
+        
+        // EOL filter match
+        const eolMatches = selectedEol === '' || eol === selectedEol;
+        
+        const shouldShow = searchMatches && eolMatches;
+        row.style.display = shouldShow ? '' : 'none';
+        
+        if (shouldShow) visibleCount++;
+    });
+    
+    // Update found count
+    document.getElementById('foundCount').textContent = visibleCount;
+    
+    updateSelectAllCheckbox();
+}
+
+function submitSelected() {
+    if (manualCollection.selectedDollys.length === 0) {
+        showError('❌ Lütfen en az bir dolly seçin!');
+        return;
+    }
+    
+    const selectedDollysData = manualCollection.selectedDollys.map(order => {
+        const dolly = manualCollection.allDollys.find(d => d.order === order);
+        return {
+            dollyNo: dolly.dollyNo,
+            orderNumber: order,
+            vins: dolly.vins,
+            vinCount: dolly.vinCount,
+            eol: dolly.eol
+        };
+    });
+    
+    console.log('✅ Seçim:', selectedDollysData);
+    
+    if (confirm(`${manualCollection.selectedDollys.length} dolly submit edilecek. Onaylıyor musunuz?`)) {
+        submitToBackend(selectedDollysData);
+    }
+}
+
+function submitToBackend(dollysData) {
+    fetch('/api/manual-collection/submit', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            dollys: dollysData,
+            submitted_at: new Date().toISOString()
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (window.showNotification) {
+                window.showNotification(`✅ ${dollysData.length} dolly başarıyla submit edildi!`, 'success', 3000);
+            }
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showError(`❌ Submit hatası: ${data.error}`);
+        }
+    })
+    .catch(err => {
+        console.error('Submit error:', err);
+        showError('❌ Sunucu hatası! Lütfen tekrar deneyin.');
+    });
+}
+
+function showError(message) {
+    if (window.showNotification) {
+        window.showNotification(message, 'error', 4000);
+    } else {
+        alert(message);
+    }
+}
+
+</script>
+{% endblock %}

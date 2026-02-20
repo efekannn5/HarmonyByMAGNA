@@ -1,0 +1,359 @@
+{% extends "layout.html" %}
+{% block content %}
+<style>
+  .btn-edit, .btn-delete {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    margin-right: 5px;
+  }
+  .btn-edit {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+  }
+  .btn-edit:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-2px);
+  }
+  .btn-delete {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+  }
+  .btn-delete:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    transform: translateY(-2px);
+  }
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    overflow-y: auto;
+  }
+  .modal-content {
+    background: white;
+    margin: 5% auto;
+    padding: 30px;
+    border-radius: 16px;
+    width: 80%;
+    max-width: 800px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideDown 0.3s ease;
+  }
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-50px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+  .modal-header h2 {
+    margin: 0;
+    color: #1f2937;
+  }
+  .close-btn {
+    font-size: 28px;
+    font-weight: bold;
+    color: #6b7280;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+  }
+  .close-btn:hover {
+    background: #f3f4f6;
+    color: #1f2937;
+  }
+  .modal-footer {
+    margin-top: 25px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  .modal-footer button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .btn-cancel {
+    background: #e5e7eb;
+    color: #374151;
+  }
+  .btn-cancel:hover {
+    background: #d1d5db;
+  }
+  .btn-save {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+  }
+  .btn-save:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+  }
+</style>
+<section class="card">
+  <div class="card-header">
+    <h2>EOL Grupları</h2>
+    <p>PWorkStation tablosunda adı EOL ile biten istasyonlar otomatik olarak grup kabul edilir.</p>
+  </div>
+  {% if message %}
+  <div class="alert success">{{ message }}</div>
+  {% endif %}
+  {% if error %}
+  <div class="alert error">{{ error }}</div>
+  {% endif %}
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>Grup Adı</th>
+          <th>Açıklama</th>
+          <th>EOL İstasyonları / Etiket</th>
+          <th style="width: 150px;">İşlemler</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for definition in definitions %}
+        <tr>
+          <td>{{ definition.name }}</td>
+          <td>{{ definition.description or "-" }}</td>
+          <td>
+            <ul>
+              {% for eol in definition.eols %}
+              <li>{{ eol.name }} ({{ eol.number }}) - <strong>{{ eol.shipping_tag|upper }}</strong></li>
+              {% endfor %}
+            </ul>
+          </td>
+          <td>
+            <button class="btn-edit" 
+                    onclick='openEditModal({{ definition.group_id }}, {{ definition.name|tojson|safe }}, {{ (definition.description or "")|tojson|safe }}, {{ definition.eols|tojson|safe }})' 
+                    title="Düzenle">
+              Düzenle
+            </button>
+            <button class="btn-delete" 
+                    onclick='confirmDelete({{ definition.group_id }}, {{ definition.name|tojson|safe }})' 
+                    title="Sil">
+              Sil
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="empty">Henüz grup tanımlanmadı.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <h2>PWorkStation Kaynak Verisi</h2>
+    <p>Filtrelenen istasyon listesi (sadece isim sonu EOL olanlar).</p>
+  </div>
+  <form method="post" action="{{ url_for('dashboard.create_group_action') }}" class="group-form" onsubmit="return validateGroupForm(this)">
+    <div class="form-group">
+      <label for="name">Grup Adı</label>
+      <input type="text" id="name" name="name" required>
+    </div>
+    <div class="form-group">
+      <label for="description">Açıklama</label>
+      <textarea id="description" name="description" rows="2" placeholder="Opsiyonel"></textarea>
+    </div>
+    <div class="form-group">
+      <label>EOL Seçimi</label>
+      <div class="checkbox-grid">
+        {% for eol in eol_candidates %}
+        <div class="checkbox-row">
+          <label>
+            <input type="checkbox" name="eol_ids" value="{{ eol.workstation_id }}">
+            {{ eol.name }} ({{ eol.number }})
+          </label>
+          <select name="tag_{{ eol.workstation_id }}">
+            <option value="both">Her İkisi</option>
+            <option value="asn">ASN</option>
+            <option value="irsaliye">İrsaliye</option>
+          </select>
+        </div>
+        {% else %}
+        <p class="empty">EOL kriterlerine uyan istasyon bulunamadı.</p>
+        {% endfor %}
+      </div>
+    </div>
+    <button type="submit">Grup Oluştur</button>
+  </form>
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>İsim</th>
+          <th>Numara</th>
+          <th>ERP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for eol in eol_candidates %}
+        <tr>
+          <td>{{ eol.workstation_id }}</td>
+          <td>{{ eol.name }}</td>
+          <td>{{ eol.number }}</td>
+          <td>{{ eol.erp_code }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="empty">Kriterlere uyan EOL bulunamadı. Lütfen konfigürasyon kısıtlarını kontrol edin.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Edit Group Modal -->
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Grubu Düzenle</h2>
+      <button class="close-btn" onclick="closeEditModal()">&times;</button>
+    </div>
+    <form id="editForm" method="post" onsubmit="return validateGroupForm(this)">
+      <div class="form-group">
+        <label for="edit_name">Grup Adı</label>
+        <input type="text" id="edit_name" name="name" required>
+      </div>
+      <div class="form-group">
+        <label for="edit_description">Açıklama</label>
+        <textarea id="edit_description" name="description" rows="2" placeholder="Opsiyonel"></textarea>
+      </div>
+      <div class="form-group">
+        <label>EOL Seçimi</label>
+        <div class="checkbox-grid" id="edit_eol_grid">
+          <!-- Will be populated dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeEditModal()">İptal</button>
+        <button type="submit" class="btn-save">Kaydet</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let allEolCandidates = {{ eol_candidates|tojson|safe }};
+
+function validateGroupForm(form) {
+  // Check if at least one EOL is selected
+  const checkboxes = form.querySelectorAll('input[name="eol_ids"]:checked');
+  if (checkboxes.length === 0) {
+    alert('❌ En az bir EOL seçmelisiniz!');
+    return false;
+  }
+  
+  // Check group name
+  const nameInput = form.querySelector('input[name="name"]');
+  if (!nameInput || !nameInput.value.trim()) {
+    alert('❌ Grup adı boş olamaz!');
+    if (nameInput) nameInput.focus();
+    return false;
+  }
+  
+  return true;
+}
+
+function openEditModal(groupId, groupName, groupDesc, selectedEols) {
+  document.getElementById('edit_name').value = groupName;
+  document.getElementById('edit_description').value = groupDesc;
+  document.getElementById('editForm').action = `/groups/edit/${groupId}`;
+  
+  // Build EOL checkboxes
+  const grid = document.getElementById('edit_eol_grid');
+  grid.innerHTML = '';
+  
+  allEolCandidates.forEach(eol => {
+    const selectedEol = selectedEols.find(e => e.workstation_id === eol.workstation_id);
+    const isChecked = selectedEol ? 'checked' : '';
+    const selectedTag = selectedEol ? selectedEol.shipping_tag : 'both';
+    
+    const row = document.createElement('div');
+    row.className = 'checkbox-row';
+    row.innerHTML = `
+      <label>
+        <input type="checkbox" name="eol_ids" value="${eol.workstation_id}" ${isChecked}>
+        ${eol.name} (${eol.number})
+      </label>
+      <select name="tag_${eol.workstation_id}">
+        <option value="both" ${selectedTag === 'both' ? 'selected' : ''}>Her İkisi</option>
+        <option value="asn" ${selectedTag === 'asn' ? 'selected' : ''}>ASN</option>
+        <option value="irsaliye" ${selectedTag === 'irsaliye' ? 'selected' : ''}>İrsaliye</option>
+      </select>
+    `;
+    grid.appendChild(row);
+  });
+  
+  document.getElementById('editModal').style.display = 'block';
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').style.display = 'none';
+}
+
+function confirmDelete(groupId, groupName) {
+  if (confirm(`"${groupName}" grubunu silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!`)) {
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = `/groups/delete/${groupId}`;
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+  const modal = document.getElementById('editModal');
+  if (event.target === modal) {
+    closeEditModal();
+  }
+}
+
+// Escape key to close modal
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    closeEditModal();
+  }
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Production Lines{% endblock %}
+{% block page_title %}Production Line Performance{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <div class="col-md-12">
+        <div class="chart-card">
+            <h6><i class="bi bi-diagram-3"></i> Production Volume by Line</h6>
+            <canvas id="linesChart" height="100"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-12">
+        <div class="chart-card">
+            <h6><i class="bi bi-table"></i> Line Performance Details</h6>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Production Line</th>
+                            <th class="text-end">Total Dollies</th>
+                            <th class="text-end">Completed</th>
+                            <th class="text-end">Completion Rate</th>
+                            <th class="text-end">Avg Cycle Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="linesTable">
+                        <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+fetch('/analytics/api/line-performance')
+    .then(r => r.json())
+    .then(data => {
+        const ctx = document.getElementById('linesChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(l => l.line),
+                datasets: [{
+                    label: 'Total Production',
+                    data: data.map(l => l.total),
+                    backgroundColor: '#3b82f6'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } }
+            }
+        });
+        
+        const tbody = document.getElementById('linesTable');
+        tbody.innerHTML = data.map(l => `
+            <tr>
+                <td><strong>${l.line}</strong></td>
+                <td class="text-end">${l.total}</td>
+                <td class="text-end">${l.completed || 0}</td>
+                <td class="text-end">
+                    <span class="badge ${l.completion_rate > 50 ? 'bg-success' : 'bg-warning'}">
+                        ${l.completion_rate ? l.completion_rate.toFixed(1) : 0}%
+                    </span>
+                </td>
+                <td class="text-end">${l.avg_time ? l.avg_time.toFixed(1) : '-'} hrs</td>
+            </tr>
+        `).join('');
+    });
+</script>
+{% endblock %}

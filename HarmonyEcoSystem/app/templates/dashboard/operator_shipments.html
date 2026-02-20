@@ -1,0 +1,463 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Bekleyen Sevkiyatlar (Forklift Tamamladı)</h2>
+        <div>
+            <button type="button" id="notification-toggle-btn" class="btn btn-success btn-sm" onclick="toggleNotifications()">
+                <i class="bi bi-bell-fill"></i> Bildirimler Açık
+            </button>
+            <span class="badge bg-info ms-2" title="Otomatik yenileme aktif">
+                <i class="bi bi-arrow-repeat"></i> 3s
+            </span>
+        </div>
+    </div>
+    
+    <div class="alert alert-info">
+        <strong>İş Akışı:</strong>
+        <ol>
+            <li>Forklift operatör dolly'leri sırayla okuttu ve TIR'a yükledi</li>
+            <li>Forklift "Yükleme Tamamlandı" butonuna bastı</li>
+            <li><strong>Şimdi sizin sıranız:</strong> Sefer No ve Plaka girin, ASN/İrsaliye gönderin</li>
+        </ol>
+        <div class="mt-2">
+            <i class="bi bi-bell"></i> <strong>Yeni görev geldiğinde:</strong> Otomatik bildirim alacak ve sayfa yenilenecektir.
+        </div>
+    </div>
+
+    {% if pending_shipments %}
+    <div class="row">
+        {% for shipment in pending_shipments %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5>
+                        <i class="bi bi-truck"></i> 
+                        {{ shipment.loadingSessionId }}
+                    </h5>
+                    <small>Forklift: {{ shipment.forkliftUser or 'Bilinmiyor' }} | 
+                           Tamamlanma: {{ shipment.completedAt }}</small>
+                </div>
+                <div class="card-body">
+                    <h6>Yüklenen Dolly'ler ({{ shipment.dollyCount }} adet) 
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleSelectAll({{ loop.index }})">
+                            <i class="bi bi-check-square"></i> Tümünü Seç/Kaldır
+                        </button>
+                    </h6>
+                    <div class="alert alert-warning alert-sm">
+                        <i class="bi bi-info-circle"></i> İsterseniz sadece bazı dolly'leri seçip gönderebilirsiniz (Partial Shipment)
+                    </div>
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th width="40">Seç</th>
+                                <th>Sıra</th>
+                                <th>Dolly No</th>
+                                <th>VIN No</th>
+                                <th>Müşteri</th>
+                                <th>EOL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dolly in shipment.dollys %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" 
+                                           class="form-check-input dolly-checkbox-{{ loop.parent.loop.index }}" 
+                                           name="selected_dolly_ids" 
+                                           value="{{ dolly.id }}"
+                                           checked
+                                           onchange="updateSelectedCount({{ loop.parent.loop.index }})">
+                                </td>
+                                <td><span class="badge bg-primary">{{ dolly.scanOrder }}</span></td>
+                                <td><strong>{{ dolly.dollyNo }}</strong></td>
+                                <td><code>{{ dolly.vinNo }}</code></td>
+                                <td>{{ dolly.customerReferans or '-' }}</td>
+                                <td>{{ dolly.eolName or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <div class="alert alert-info alert-sm">
+                        <span id="selected-count-{{ loop.index }}">{{ shipment.dollyCount }}</span> dolly seçildi
+                    </div>
+
+                    <hr>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Not:</strong> ASN gönderme işlemi kaldırılmıştır. 
+                        Sevkiyat tamamlama için IT departmanı ile iletişime geçin.
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-secondary">
+        <i class="bi bi-inbox"></i> Şu anda bekleyen sevkiyat yok.
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.card {
+    border: 2px solid #ffc107;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    font-weight: bold;
+}
+
+.table-sm td, .table-sm th {
+    padding: 0.5rem;
+}
+
+code {
+    background-color: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+.alert-sm {
+    padding: 0.5rem;
+    font-size: 0.9em;
+}
+
+/* Real-time Notification Styles */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.notification-flash {
+    animation: slideInRight 0.5s ease-out;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+#notification-toggle-btn {
+    transition: all 0.3s ease;
+}
+
+#notification-toggle-btn:hover {
+    transform: scale(1.05);
+}
+
+.badge.bg-info {
+    animation: pulse 2s infinite;
+}
+</style>
+
+<script>
+// ============================================
+// REAL-TIME NOTIFICATION SYSTEM
+// ============================================
+
+var lastTaskCount = {{ pending_shipments|length }};
+var lastTaskIds = [
+    {% for ship in pending_shipments %}
+    "{{ ship.loadingSessionId }}"{{ "," if not loop.last else "" }}
+    {% endfor %}
+];
+var notificationSound = null;
+var isPageVisible = true;
+var pollInterval = null;
+var notificationsEnabled = localStorage.getItem('operatorNotifications') !== 'false';
+
+// Ses dosyası hazırlama
+function initNotificationSound() {
+    try {
+        // Basit bildirim sesi (data URL ile)
+        notificationSound = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE');
+    } catch (e) {
+        console.error('Ses başlatma hatası:', e);
+    }
+}
+
+// Sayfa görünürlük kontrolü
+document.addEventListener('visibilitychange', function() {
+    isPageVisible = !document.hidden;
+    console.log('Sayfa görünürlük:', isPageVisible ? 'Görünür' : 'Gizli');
+});
+
+// Browser notification izni isteme
+function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        console.log('Bu tarayıcı bildirim desteklemiyor');
+        return;
+    }
+    
+    if (Notification.permission === 'default') {
+        Notification.requestPermission().then(function(permission) {
+            console.log('Bildirim izni:', permission);
+            if (permission === 'granted') {
+                showBrowserNotification('Bildirimler Aktif', 'Yeni görev geldiğinde bildirim alacaksınız', 'success');
+            }
+        });
+    }
+}
+
+// Browser notification gösterme
+function showBrowserNotification(title, message, icon) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
+        return;
+    }
+    
+    var iconUrl = icon === 'success' ? '✅' : '📦';
+    
+    var notification = new Notification(title, {
+        body: message,
+        icon: '/static/favicon.ico',
+        badge: '/static/favicon.ico',
+        tag: 'harmony-operator',
+        requireInteraction: false,
+        silent: false
+    });
+    
+    notification.onclick = function() {
+        window.focus();
+        notification.close();
+    };
+    
+    // 5 saniye sonra otomatik kapat
+    setTimeout(function() {
+        notification.close();
+    }, 5000);
+}
+
+// Bildirim sesi çalma
+function playNotificationSound() {
+    if (notificationSound && notificationsEnabled) {
+        try {
+            notificationSound.currentTime = 0;
+            notificationSound.play().catch(function(err) {
+                console.log('Ses çalma hatası:', err);
+            });
+        } catch (e) {
+            console.error('Ses çalma hatası:', e);
+        }
+    }
+}
+
+// Aktif görevleri kontrol et
+function checkForNewTasks() {
+    fetch('/api/operator/active-tasks-status', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        credentials: 'same-origin'
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (!data.success) {
+            console.error('API hatası:', data.error);
+            return;
+        }
+        
+        var currentTaskCount = data.count;
+        var currentTaskIds = data.tasks.map(function(t) { return t.part_number; });
+        
+        // Yeni görev var mı kontrol et
+        var hasNewTask = false;
+        
+        // Yeni görev sayısı artmışsa
+        if (currentTaskCount > lastTaskCount) {
+            hasNewTask = true;
+        } else if (currentTaskCount === lastTaskCount) {
+            // Aynı sayıda ama farklı görev ID'leri varsa
+            for (var i = 0; i < currentTaskIds.length; i++) {
+                if (lastTaskIds.indexOf(currentTaskIds[i]) === -1) {
+                    hasNewTask = true;
+                    break;
+                }
+            }
+        }
+        
+        if (hasNewTask) {
+            console.log('🆕 Yeni görev tespit edildi!');
+            
+            // Bildirim göster
+            handleNewTaskNotification(data.tasks);
+            
+            // Sayfayı yenile
+            setTimeout(function() {
+                console.log('🔄 Sayfa yenileniyor...');
+                window.location.reload();
+            }, 1000);
+        }
+        
+        // Son durumu kaydet
+        lastTaskCount = currentTaskCount;
+        lastTaskIds = currentTaskIds;
+    })
+    .catch(function(error) {
+        console.error('Polling hatası:', error);
+    });
+}
+
+// Yeni görev bildirimi
+function handleNewTaskNotification(tasks) {
+    if (!notificationsEnabled) {
+        return;
+    }
+    
+    // Ses çal
+    playNotificationSound();
+    
+    // Sayfa dışındaysa browser notification göster
+    if (!isPageVisible) {
+        var taskCount = tasks.length;
+        var message = taskCount + ' yeni görev bekleniyor';
+        
+        if (tasks.length > 0) {
+            message += ' (' + tasks[0].group_or_eol + ')';
+        }
+        
+        showBrowserNotification('🆕 Yeni Görev!', message, 'success');
+    }
+    
+    // Ekranda flash mesajı (sayfa görünürse)
+    if (isPageVisible) {
+        showFlashMessage('Yeni görev eklendi! Sayfa yenileniyor...', 'success');
+    }
+}
+
+// Flash mesaj göster
+function showFlashMessage(message, type) {
+    var alertClass = 'alert-' + (type === 'success' ? 'success' : 'info');
+    var alertHtml = '<div class="alert ' + alertClass + ' alert-dismissible fade show notification-flash" role="alert" style="position: fixed; top: 80px; right: 20px; z-index: 9999; min-width: 300px; animation: slideInRight 0.5s;">' +
+        '<strong>📦 Harmony:</strong> ' + message +
+        '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+        '</div>';
+    
+    var container = document.querySelector('.container-fluid');
+    if (container) {
+        container.insertAdjacentHTML('afterbegin', alertHtml);
+        
+        // 3 saniye sonra otomatik kaldır
+        setTimeout(function() {
+            var flash = document.querySelector('.notification-flash');
+            if (flash) {
+                flash.remove();
+            }
+        }, 3000);
+    }
+}
+
+// Bildirim toggle butonu
+function toggleNotifications() {
+    notificationsEnabled = !notificationsEnabled;
+    localStorage.setItem('operatorNotifications', notificationsEnabled ? 'true' : 'false');
+    
+    var btn = document.getElementById('notification-toggle-btn');
+    if (btn) {
+        btn.innerHTML = notificationsEnabled ? 
+            '<i class="bi bi-bell-fill"></i> Bildirimler Açık' : 
+            '<i class="bi bi-bell-slash"></i> Bildirimler Kapalı';
+        btn.className = notificationsEnabled ? 'btn btn-success btn-sm' : 'btn btn-secondary btn-sm';
+    }
+    
+    showFlashMessage(
+        notificationsEnabled ? 'Bildirimler açıldı ✅' : 'Bildirimler kapatıldı 🔕', 
+        notificationsEnabled ? 'success' : 'warning'
+    );
+}
+
+// Sayfa yüklendiğinde başlat
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Real-time notification system başlatılıyor...');
+    console.log('📊 Başlangıç görev sayısı:', lastTaskCount);
+    console.log('📋 Başlangıç görev ID\'leri:', lastTaskIds.join(', '));
+    
+    // Ses sistemini başlat
+    initNotificationSound();
+    
+    // Browser notification izni iste (DİREK!)
+    if ('Notification' in window) {
+        console.log('🔔 Mevcut bildirim izni:', Notification.permission);
+        if (Notification.permission === 'default') {
+            console.log('⚡ Bildirim izni şimdi isteniyor...');
+            requestNotificationPermission(); // Direkt çağır, timeout yok!
+        } else if (Notification.permission === 'granted') {
+            console.log('✅ Bildirim izni zaten verilmiş!');
+        } else {
+            console.log('❌ Bildirim izni reddedilmiş. Tarayıcı ayarlarından değiştirebilirsiniz.');
+        }
+    }
+    
+    // 3 saniyede bir polling başlat
+    pollInterval = setInterval(checkForNewTasks, 3000);
+    
+    console.log('✅ Polling başlatıldı (3 saniye interval)');
+    console.log('🔔 Bildirimler:', notificationsEnabled ? 'Açık' : 'Kapalı');
+    console.log('🎯 İlk polling 3 saniye sonra başlayacak...');
+});
+
+// Sayfa kapatılırken polling'i durdur
+window.addEventListener('beforeunload', function() {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+    }
+});
+
+// ============================================
+// MEVCUT FONKSİYONLAR
+// ============================================
+
+function toggleSelectAll(shipmentIndex) {
+    const checkboxes = document.querySelectorAll('.dolly-checkbox-' + shipmentIndex);
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    
+    checkboxes.forEach(cb => {
+        cb.checked = !allChecked;
+    });
+    
+    updateSelectedCount(shipmentIndex);
+}
+
+function updateSelectedCount(shipmentIndex) {
+    const checkboxes = document.querySelectorAll('.dolly-checkbox-' + shipmentIndex);
+    const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+    
+    const countElement = document.getElementById('selected-count-' + shipmentIndex);
+    if (countElement) {
+        countElement.textContent = checkedCount;
+    }
+}
+
+// Form validation before submit
+var forms = document.querySelectorAll('form');
+forms.forEach(form => {
+    form.addEventListener('submit', function(e) {
+        const checkboxes = form.querySelectorAll('input[name="selected_dolly_ids"]:checked');
+        if (checkboxes.length === 0) {
+            e.preventDefault();
+            alert('En az bir dolly seçmelisiniz!');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -86,7 +86,7 @@ Trix/EOL istasyonları ile ana sistem arasında köprü görevi gören Windows b
 
 Forklift operatörlerinin sahada kullandığı Android tabanlı el terminali uygulaması. Kiosk modunda çalışacak şekilde tasarlanmıştır.
 
-**Teknolojiler:** Kotlin, Android, Retrofit, Kiosk Mode
+**Teknolojiler:** Java, Android, Retrofit, Kiosk Mode
 
 **Temel Özellikler:**
 - Çalışan barkodu ile güvenli giriş (JWT token)
